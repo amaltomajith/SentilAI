@@ -1,0 +1,195 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap');
+
+@layer base {
+  :root {
+    --background: 220 20% 4%;
+    --foreground: 120 100% 50%;
+
+    --card: 220 20% 6%;
+    --card-foreground: 120 100% 50%;
+
+    --popover: 220 20% 8%;
+    --popover-foreground: 120 100% 50%;
+
+    --primary: 120 100% 50%;
+    --primary-foreground: 220 20% 4%;
+
+    --secondary: 185 100% 50%;
+    --secondary-foreground: 220 20% 4%;
+
+    --muted: 220 15% 15%;
+    --muted-foreground: 120 40% 60%;
+
+    --accent: 185 100% 50%;
+    --accent-foreground: 220 20% 4%;
+
+    --destructive: 0 85% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 120 100% 50%;
+    --success-foreground: 220 20% 4%;
+
+    --warning: 45 100% 50%;
+    --warning-foreground: 220 20% 4%;
+
+    --border: 120 50% 20%;
+    --input: 220 20% 10%;
+    --ring: 120 100% 50%;
+
+    --radius: 0.5rem;
+
+    --cyber-glow: 0 0 20px hsl(120 100% 50% / 0.5);
+    --cyber-glow-strong: 0 0 30px hsl(120 100% 50% / 0.7), 0 0 60px hsl(120 100% 50% / 0.3);
+    --cyan-glow: 0 0 20px hsl(185 100% 50% / 0.5);
+    --red-glow: 0 0 20px hsl(0 85% 60% / 0.5);
+
+    --sidebar-background: 220 20% 6%;
+    --sidebar-foreground: 120 100% 50%;
+    --sidebar-primary: 120 100% 50%;
+    --sidebar-primary-foreground: 220 20% 4%;
+    --sidebar-accent: 185 100% 50%;
+    --sidebar-accent-foreground: 220 20% 4%;
+    --sidebar-border: 120 50% 20%;
+    --sidebar-ring: 120 100% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+
+  /* Cyber grid background pattern */
+  .cyber-grid {
+    background-image: 
+      linear-gradient(hsl(120 100% 50% / 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(120 100% 50% / 0.03) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+
+  /* Scanline effect */
+  .scanlines::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      hsl(120 100% 50% / 0.02) 2px,
+      hsl(120 100% 50% / 0.02) 4px
+    );
+    pointer-events: none;
+    z-index: 10;
+  }
+}
+
+@layer utilities {
+  /* Neon text glow */
+  .text-glow {
+    text-shadow: 0 0 10px hsl(120 100% 50% / 0.8), 0 0 20px hsl(120 100% 50% / 0.5), 0 0 30px hsl(120 100% 50% / 0.3);
+  }
+
+  .text-glow-cyan {
+    text-shadow: 0 0 10px hsl(185 100% 50% / 0.8), 0 0 20px hsl(185 100% 50% / 0.5);
+  }
+
+  .text-glow-red {
+    text-shadow: 0 0 10px hsl(0 85% 60% / 0.8), 0 0 20px hsl(0 85% 60% / 0.5);
+  }
+
+  /* Neon border glow */
+  .border-glow {
+    box-shadow: var(--cyber-glow), inset 0 0 20px hsl(120 100% 50% / 0.1);
+  }
+
+  .border-glow-strong {
+    box-shadow: var(--cyber-glow-strong), inset 0 0 30px hsl(120 100% 50% / 0.15);
+  }
+
+  .border-glow-cyan {
+    box-shadow: var(--cyan-glow), inset 0 0 20px hsl(185 100% 50% / 0.1);
+  }
+
+  .border-glow-red {
+    box-shadow: var(--red-glow), inset 0 0 20px hsl(0 85% 60% / 0.1);
+  }
+
+  /* Monospace font utility */
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Typing cursor animation */
+  .cursor-blink::after {
+    content: '█';
+    animation: blink 1s step-end infinite;
+  }
+
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+
+  /* Pulse animation for processing */
+  .pulse-glow {
+    animation: pulseGlow 2s ease-in-out infinite;
+  }
+
+  @keyframes pulseGlow {
+    0%, 100% { 
+      box-shadow: 0 0 5px hsl(120 100% 50% / 0.5);
+    }
+    50% { 
+      box-shadow: 0 0 30px hsl(120 100% 50% / 0.8), 0 0 60px hsl(120 100% 50% / 0.4);
+    }
+  }
+
+  /* Matrix rain effect for backgrounds */
+  .matrix-bg {
+    background: 
+      radial-gradient(ellipse at top, hsl(120 100% 50% / 0.1) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom, hsl(185 100% 50% / 0.05) 0%, transparent 50%);
+  }
+
+  /* Glitch effect */
+  .glitch {
+    animation: glitch 0.3s ease-in-out;
+  }
+
+  @keyframes glitch {
+    0%, 100% { transform: translate(0); }
+    20% { transform: translate(-2px, 2px); }
+    40% { transform: translate(-2px, -2px); }
+    60% { transform: translate(2px, 2px); }
+    80% { transform: translate(2px, -2px); }
+  }
+
+  /* Fade in animation */
+  .fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Slide up animation */
+  .slide-up {
+    animation: slideUp 0.6s ease-out forwards;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
