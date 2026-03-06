@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 // --- CONFIGURATION ---
 // PASTE YOUR GROQ KEY INSIDE THE QUOTES BELOW
-const GROQ_KEY = Deno.env.get("GROQ_API_KEY");; 
+const groqApiKey = Deno.env.get('GROQ_API_KEY');
 // ---------------------
 
 const corsHeaders = {
