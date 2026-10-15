@@ -1,0 +1,9 @@
+name = "sentinel-keepwarm"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+[vars]
+TARGET_URL = "https://YOUR-SERVICE.onrender.com/api/health"
+
+[triggers]
+crons = ["*/5 * * * *"]   # every 5 minutes (Render sleeps after 15)

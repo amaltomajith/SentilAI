@@ -13,17 +13,18 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 
 from sentinel.auth import TokenError, Verifier
+from sentinel.security.vault import CryptoError, load_key, open_, seal
 from sentinel import canary as canary_mod
 from sentinel import graph as graph_mod
 from sentinel import ledger, takedown
 from sentinel.config import Settings, get_settings
 from sentinel.db import make_engine, make_session_factory, session_scope
 from sentinel.db.models import (BridgeOutbox, BridgeSeen, Canary, CanaryHit, Ioc, Session, TargetNumber, Takedown,
-                                Profile, ToolTrace, Turn, User)
+                                Profile, ToolTrace, Turn, User, WaAuthBlob)
 from sentinel.enrich import enrich_ip
 from sentinel.llm import LLMClient
 from sentinel.mcp.tools import MEDIA_DIR, ToolContext, call_tool
@@ -149,6 +150,8 @@ def create_app(settings: Settings | None = None, factory=None, llm=None, fetch=N
             raise HTTPException(404)
         return s
 
+    seen_nonces: dict[str, float] = {}      # single-process replay cache (no database write per bridge request)
+
     async def bridge(request: Request) -> bytes:
         body = await request.body()
         ok, why = verify_signature(settings.bridge_shared_secret, request.method, request.url.path,
@@ -156,11 +159,14 @@ def create_app(settings: Settings | None = None, factory=None, llm=None, fetch=N
                                    request.headers.get("x-bridge-nonce", ""), body, request.headers.get("x-bridge-signature", ""))
         if not ok:
             raise HTTPException(401, why)
-        with session_scope(factory) as db:
-            key = f"n:{request.headers['x-bridge-nonce']}"
-            if db.get(BridgeSeen, key):
-                raise HTTPException(401, "nonce replay")
-            db.add(BridgeSeen(key=key))
+        nonce = request.headers["x-bridge-nonce"]
+        now = time.time()
+        if len(seen_nonces) > 4096:                      # signatures expire after 60 s, so older nonces can never be replayed
+            for k in [k for k, t in seen_nonces.items() if now - t > 120]:
+                seen_nonces.pop(k, None)
+        if nonce in seen_nonces:
+            raise HTTPException(401, "nonce replay")
+        seen_nonces[nonce] = now
         return body
 
     def client_ip(request: Request) -> str:
@@ -569,6 +575,71 @@ def create_app(settings: Settings | None = None, factory=None, llm=None, fetch=N
             if not j or j.status != "leased":
                 raise HTTPException(409, "job not leased")
             j.status = "sent" if ack.ok else "failed"
+        return {"ok": True}
+
+    # ---------------- encrypted WhatsApp credential store (for hosts without a persistent disk) ----------------
+    try:
+        enc_key = load_key(settings.session_enc_key)
+    except CryptoError:
+        enc_key = None
+
+    def _need_key() -> bytes:
+        if enc_key is None:
+            raise HTTPException(503, "SESSION_ENC_KEY is not configured; the database auth store is disabled")
+        return enc_key
+
+    def _uid(d: dict) -> str:
+        uid = str(d.get("user_id", ""))
+        if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", uid):
+            raise HTTPException(422, "bad user_id")
+        return uid
+
+    @app.post("/bridge/auth/get")
+    async def auth_get(request: Request, body: bytes = Depends(bridge)):
+        key, data = _need_key(), json.loads(body or b"{}")
+        uid, names = _uid(data), [str(n)[:200] for n in (data.get("names") or [])][:500]
+        out: dict[str, str | None] = {n: None for n in names}
+        with session_scope(factory) as db:
+            for r in db.scalars(select(WaAuthBlob).where(WaAuthBlob.user_id == uid, WaAuthBlob.name.in_(names))):
+                try:
+                    out[r.name] = open_(key, uid, r.name, r.data)
+                except CryptoError:
+                    out[r.name] = None
+        return {"items": out}
+
+    @app.post("/bridge/auth/set")
+    async def auth_set(request: Request, body: bytes = Depends(bridge)):
+        key, data = _need_key(), json.loads(body or b"{}")
+        uid, items = _uid(data), data.get("items") or {}
+        if not isinstance(items, dict) or len(items) > 500:
+            raise HTTPException(422, "items must be an object of at most 500 entries")
+        with session_scope(factory) as db:
+            for name, val in items.items():
+                name = str(name)[:200]
+                row = db.get(WaAuthBlob, (uid, name))
+                if val is None:
+                    if row:
+                        db.delete(row)
+                    continue
+                sealed = seal(key, uid, name, str(val))
+                if row:
+                    row.data, row.updated_at = sealed, datetime.now(timezone.utc)
+                else:
+                    db.add(WaAuthBlob(user_id=uid, name=name, data=sealed))
+        return {"ok": True}
+
+    @app.post("/bridge/auth/users")
+    async def auth_users(request: Request, _: bytes = Depends(bridge)):
+        _need_key()
+        with session_scope(factory) as db:
+            return {"users": list(db.scalars(select(WaAuthBlob.user_id).where(WaAuthBlob.name == "creds").distinct()))}
+
+    @app.post("/bridge/auth/wipe")
+    async def auth_wipe(request: Request, body: bytes = Depends(bridge)):
+        _need_key()
+        uid = _uid(json.loads(body or b"{}"))
+        with session_scope(factory) as db:
+            db.execute(delete(WaAuthBlob).where(WaAuthBlob.user_id == uid))
         return {"ok": True}
 
     @app.get("/bridge/media/{sha}")

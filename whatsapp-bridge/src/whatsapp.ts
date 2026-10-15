@@ -8,7 +8,8 @@ import { Boom } from '@hapi/boom';
 import pino from 'pino';
 import type { Config } from './config.js';
 import type { AccountState, BackendClient, Command } from './backend-client.js';
-import { SAFE_USER_ID, TargetStore, toInbound, type WaMessageLike } from './inbound.js';
+import { SAFE_USER_ID, TargetStore, acceptUpsert, toInbound, type WaMessageLike } from './inbound.js';
+import { useBackendAuthState } from './authstate.js';
 
 const MAX_RECONNECTS = 10;
 
@@ -39,7 +40,7 @@ export class WhatsAppLink {
 
   async start(): Promise<void> {
     if (this.dead) return;
-    const { state, saveCreds } = await useMultiFileAuthState(this.dir);
+    const { state, saveCreds } = this.cfg.authStore === 'db' ? await useBackendAuthState(this.userId, this.backend) : await useMultiFileAuthState(this.dir);
     const { version } = await fetchLatestBaileysVersion();
     const quiet = pino({ level: 'silent' }) as never;
     const sock = makeWASocket({
@@ -76,8 +77,8 @@ export class WhatsAppLink {
     });
 
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
-      if (type !== 'notify') return;
       for (const m of messages) {
+        if (!acceptUpsert(type, m as unknown as WaMessageLike & { messageTimestamp?: number })) continue;
         try {
           const payload = await toInbound(m as unknown as WaMessageLike, this.userId, this.targets.get(this.userId), async (wm) =>
             (await downloadMediaMessage(wm as never, 'buffer', {}, { logger: quiet, reuploadRequest: sock.updateMediaMessage })) as Buffer);
@@ -112,6 +113,7 @@ export class WhatsAppLink {
 
   private wipe(): void {
     try { rmSync(this.dir, { recursive: true, force: true }); } catch { /* ignore */ }
+    if (this.cfg.authStore === 'db') void this.backend.authWipe(this.userId).catch(() => undefined);
   }
 }
 
@@ -125,6 +127,16 @@ export class LinkManager {
 
   /** Reconnect every user who linked before this process started. */
   async restore(): Promise<void> {
+    if (this.cfg.authStore === 'db') {
+      for (const u of await this.backend.authUsers().catch(() => [] as string[])) {
+        if (!SAFE_USER_ID.test(u)) continue;
+        const raw = (await this.backend.authGet(u, ['creds']).catch(() => ({}) as Record<string, string | null>)).creds;
+        let registered = false;
+        try { registered = !!raw && JSON.parse(raw).registered === true; } catch { /* unreadable credentials count as unlinked */ }
+        if (registered) await this.ensure(u); else await this.backend.authWipe(u).catch(() => undefined);   // abandoned QR attempts do not hold a slot after a restart
+      }
+      return;
+    }
     if (!existsSync(this.cfg.sessionDir)) return;
     for (const d of readdirSync(this.cfg.sessionDir, { withFileTypes: true })) {
       if (d.isDirectory() && SAFE_USER_ID.test(d.name) && existsSync(join(this.cfg.sessionDir, d.name, 'creds.json'))) await this.ensure(d.name);

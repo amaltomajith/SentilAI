@@ -23,7 +23,9 @@ await links.restore();
 let stopping = false;
 let lastSync = 0;
 async function sync(): Promise<void> {
-  if (Date.now() - lastSync < 3000) return;
+  // 3 s while anyone is linking or connected, 5 s when idle (a heartbeat costs the backend no database write, so this is cheap on free tiers)
+  const busy = links.snapshot().some((a) => a.state !== 'logged_out');
+  if (Date.now() - lastSync < (busy ? 3000 : 5000)) return;
   lastSync = Date.now();
   const res = await backend.sync(links.snapshot());
   links.targets.replace(res.targets);

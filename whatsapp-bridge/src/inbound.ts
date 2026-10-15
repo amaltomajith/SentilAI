@@ -13,6 +13,21 @@ export interface WaMessageLike {
 
 export const MAX_AUDIO_BYTES = 3 * 1024 * 1024;
 
+/** Newest messages WhatsApp may redeliver after downtime that we still answer (older ones are stale and dropped). */
+export const BACKLOG_WINDOW_S = 6 * 3600;
+
+/**
+ * Live messages arrive as 'notify'. After the host was asleep, WhatsApp replays what we missed as 'append'; answer those only if
+ * they are recent. The backend deduplicates by message id, so a message is never answered twice.
+ */
+export function acceptUpsert(type: string, msg: WaMessageLike & { messageTimestamp?: number | { toNumber(): number } | null }, nowS: number = Date.now() / 1000): boolean {
+  if (type === 'notify') return true;
+  if (type !== 'append') return false;
+  const ts = msg.messageTimestamp;
+  const t = typeof ts === 'number' ? ts : ts && typeof ts.toNumber === 'function' ? ts.toNumber() : 0;
+  return t > 0 && nowS - t <= BACKLOG_WINDOW_S && nowS - t >= -300;
+}
+
 /** Clerk user ids look like user_2abc...; anything else must never become a directory name. */
 export const SAFE_USER_ID = /^[A-Za-z0-9_-]{1,64}$/;
 

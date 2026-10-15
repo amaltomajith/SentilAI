@@ -175,3 +175,63 @@ test('BackendClient.sync posts account states and returns commands and targets',
   assert.deepEqual(JSON.parse(seen[1].body), { users: ['user_a'] });
   assert.ok(seen.every((s) => s.headers['X-Bridge-Signature']?.length === 64));
 });
+
+// ---------------- restart-proof credentials, backlog, config ----------------
+import { useBackendAuthState, type AuthBackend } from '../src/authstate.ts';
+import { acceptUpsert, BACKLOG_WINDOW_S } from '../src/inbound.ts';
+
+function memoryBackend(): AuthBackend & { store: Map<string, string>; sets: number } {
+  const store = new Map<string, string>();
+  const b = {
+    store, sets: 0,
+    authGet: async (u: string, names: string[]) => Object.fromEntries(names.map((n) => [n, store.get(`${u}|${n}`) ?? null])),
+    authSet: async (u: string, items: Record<string, string | null>) => { b.sets++; for (const [n, v] of Object.entries(items)) { if (v === null) store.delete(`${u}|${n}`); else store.set(`${u}|${n}`, v); } },
+  };
+  return b;
+}
+
+test('auth state survives a restart: creds and binary keys come back identical from the backend store', async () => {
+  const be = memoryBackend();
+  const first = await useBackendAuthState('user_a', be);
+  const original = first.state.creds.noiseKey.private;
+  assert.ok(Buffer.isBuffer(original) || original instanceof Uint8Array);
+  await first.saveCreds();
+  await first.state.keys.set({ 'pre-key': { '7': { private: Buffer.from('priv-bytes'), public: Buffer.from('pub-bytes') } } });
+
+  const second = await useBackendAuthState('user_a', be);                       // "restart": a fresh process reads only from the backend
+  assert.deepEqual(Buffer.from(second.state.creds.noiseKey.private), Buffer.from(original));
+  const got = await second.state.keys.get('pre-key', ['7', '8']);
+  assert.deepEqual(Buffer.from(got['7'].private), Buffer.from('priv-bytes'));
+  assert.equal(got['8'], undefined);
+});
+
+test('auth state is per user and a removed key stays removed', async () => {
+  const be = memoryBackend();
+  const a = await useBackendAuthState('user_a', be);
+  await a.saveCreds();
+  await a.state.keys.set({ 'pre-key': { '1': { private: Buffer.from('x'), public: Buffer.from('y') } } });
+  const b = await useBackendAuthState('user_b', be);
+  assert.deepEqual(await b.state.keys.get('pre-key', ['1']), {});                // user_b never sees user_a's keys
+  assert.notDeepEqual(Buffer.from(b.state.creds.noiseKey.private), Buffer.from(a.state.creds.noiseKey.private));
+  await a.state.keys.set({ 'pre-key': { '1': null as never } });
+  assert.deepEqual(await (await useBackendAuthState('user_a', be)).state.keys.get('pre-key', ['1']), {});
+});
+
+test('offline backlog: recent appended messages are answered, stale and live-excluded ones are not', () => {
+  const now = 1_800_000_000;
+  const msg = (ts: number) => ({ key: {}, messageTimestamp: ts }) as never;
+  assert.equal(acceptUpsert('notify', msg(0), now), true);
+  assert.equal(acceptUpsert('append', msg(now - 120), now), true);               // arrived while the host slept
+  assert.equal(acceptUpsert('append', msg(now - BACKLOG_WINDOW_S - 10), now), false);   // stale history
+  assert.equal(acceptUpsert('append', msg(now + 4000), now), false);             // timestamps from the future are suspicious
+  assert.equal(acceptUpsert('append', { key: {} } as never, now), false);        // no timestamp
+  assert.equal(acceptUpsert('append', { key: {}, messageTimestamp: { toNumber: () => now - 60 } } as never, now), true);   // protobuf Long
+  assert.equal(acceptUpsert('prepend', msg(now - 5), now), false);
+});
+
+test('config: AUTH_STORE defaults to file and only accepts db explicitly', () => {
+  const base = { BACKEND_URL: 'http://x', BRIDGE_SHARED_SECRET: SECRET };
+  assert.equal(loadConfig(base).authStore, 'file');
+  assert.equal(loadConfig({ ...base, AUTH_STORE: 'db' }).authStore, 'db');
+  assert.equal(loadConfig({ ...base, AUTH_STORE: 'weird' }).authStore, 'file');
+});

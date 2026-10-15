@@ -5,13 +5,14 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import create_engine
 
+from sentinel.db import normalize_url
 from sentinel.db.models import Base
 
 config = context.config
 if config.config_file_name:
     fileConfig(config.config_file_name)
 target_metadata = Base.metadata
-URL = os.environ.get("DATABASE_URL") or "sqlite:///./data/sentinel.db"
+URL = normalize_url(os.environ.get("DATABASE_URL") or "sqlite:///./data/sentinel.db")
 
 
 def run_migrations_offline() -> None:

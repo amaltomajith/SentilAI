@@ -26,6 +26,7 @@ class Settings:
     clerk_jwks_url: str = field(default_factory=lambda: _env("CLERK_JWKS_URL"))                       # default: <issuer>/.well-known/jwks.json
     clerk_authorized_parties: str = field(default_factory=lambda: _env("CLERK_AUTHORIZED_PARTIES", "http://localhost:5173"))
     dev_auth: bool = field(default_factory=lambda: _env("DEV_AUTH", "0") == "1")                # local testing only: accepts 'Bearer dev:<name>' instead of Clerk
+    session_enc_key: str = field(default_factory=lambda: _env("SESSION_ENC_KEY"))                    # enables the encrypted WhatsApp auth store (AUTH_STORE=db on the bridge)
     max_linked_accounts: int = field(default_factory=lambda: int(_env("MAX_LINKED_ACCOUNTS", "5")))
     max_targets_per_user: int = field(default_factory=lambda: int(_env("MAX_TARGETS_PER_USER", "3")))
     public_base_url: str = field(default_factory=lambda: _env("PUBLIC_BASE_URL", "http://localhost:8000"))

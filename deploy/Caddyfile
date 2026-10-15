@@ -1,0 +1,7 @@
+# Replace api.example.com with your domain (an A record pointing at this machine), then: docker compose --profile https up -d
+api.example.com {
+	encode gzip
+	reverse_proxy sentinel:8000 {
+		flush_interval -1      # keep the live event stream flowing
+	}
+}

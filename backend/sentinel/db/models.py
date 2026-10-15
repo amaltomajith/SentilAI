@@ -198,3 +198,12 @@ class TacticStat(Base):
     tactic: Mapped[str] = mapped_column(String(48), primary_key=True)
     successes: Mapped[int] = mapped_column(Integer, default=0)
     trials: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class WaAuthBlob(Base):
+    """One encrypted WhatsApp credential/key blob per (user, name). Only written when AUTH_STORE=db (hosts without a persistent disk)."""
+    __tablename__ = "wa_auth_blobs"
+    user_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), primary_key=True)
+    data: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

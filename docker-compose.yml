@@ -1,0 +1,36 @@
+# Run the whole backend (API + WhatsApp connector) on one machine: a PC, a Raspberry Pi, or any VM.
+#   cp deploy/.env.example .env      (fill it in)      docker compose up -d --build
+# Add HTTPS with a domain:  docker compose --profile https up -d
+services:
+  sentinel:
+    build: .
+    image: sentinel:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8000"
+    ports:
+      - "127.0.0.1:8000:8000"       # not exposed to the network directly; put a tunnel or Caddy in front
+    volumes:
+      - sentinel_data:/app/backend/data
+      - sentinel_wa:/app/bridge/wa_session
+    mem_limit: 700m
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  caddy:
+    profiles: ["https"]
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on: [sentinel]
+
+volumes:
+  sentinel_data:
+  sentinel_wa:
+  caddy_data:

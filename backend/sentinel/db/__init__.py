@@ -11,8 +11,19 @@ from sqlalchemy.pool import StaticPool
 from .models import Base
 
 
+def normalize_url(url: str) -> str:
+    """Hosts hand out postgres:// or postgresql:// URLs; SQLAlchemy needs the driver named."""
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix):]
+    return url
+
+
 def make_engine(url: str) -> Engine:
+    url = normalize_url(url)
     kwargs: dict = {}
+    if url.startswith("postgresql"):
+        kwargs.update(pool_pre_ping=True, pool_recycle=300, pool_size=5, max_overflow=5)   # free hosts drop idle connections
     if url.startswith("sqlite"):
         kwargs["connect_args"] = {"check_same_thread": False}
         if url in ("sqlite://", "sqlite:///:memory:"):

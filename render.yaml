@@ -1,0 +1,42 @@
+# Render Blueprint: one free web service running the API and the WhatsApp connector in one container.
+# Render > New > Blueprint > pick this repo. Fill the variables marked "sync: false" in the dashboard.
+# Free web services sleep after 15 minutes without inbound traffic: see docs/DEPLOY.md (keep-warm worker and cold-start behaviour).
+services:
+  - type: web
+    name: sentinel
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: AUTH_STORE            # WhatsApp login lives (encrypted) in Postgres: the free disk is wiped on every restart
+        value: db
+      - key: MAX_LINKED_ACCOUNTS   # 512 MB of RAM
+        value: "2"
+      - key: TRUSTED_PROXY
+        value: "1"
+      - key: TAKEDOWN_MODE
+        value: dry_run
+      - key: BRIDGE_SHARED_SECRET
+        generateValue: true
+      - key: SESSION_ENC_KEY       # 32 random bytes (hex or base64; Render generates 256 bits). KEEP A COPY: losing it logs everyone out of WhatsApp
+        generateValue: true
+      - key: DATABASE_URL          # Supabase session pooler URL (IPv4, port 5432), see docs/DEPLOY.md
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: SAMBANOVA_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: CLERK_ISSUER          # https://<your-instance>.clerk.accounts.dev
+        sync: false
+      - key: CLERK_AUTHORIZED_PARTIES   # your Cloudflare Pages origin, e.g. https://sentinel.pages.dev
+        sync: false
+      - key: CORS_ORIGINS               # same origin(s), comma separated
+        sync: false
+      - key: PUBLIC_BASE_URL            # this service's own URL, e.g. https://sentinel.onrender.com
+        sync: false

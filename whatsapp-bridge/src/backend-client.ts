@@ -58,6 +58,29 @@ export class BackendClient {
     return r.json() as Promise<SyncResult>;
   }
 
+  /** Encrypted auth store (AUTH_STORE=db). The backend encrypts at rest; this channel is HMAC-signed. */
+  async authGet(userId: string, names: string[]): Promise<Record<string, string | null>> {
+    const r = await this.req('POST', '/bridge/auth/get', { user_id: userId, names });
+    if (!r.ok) throw new Error(`backend auth get ${r.status}`);
+    return ((await r.json()) as { items: Record<string, string | null> }).items;
+  }
+
+  async authSet(userId: string, items: Record<string, string | null>): Promise<void> {
+    const r = await this.req('POST', '/bridge/auth/set', { user_id: userId, items });
+    if (!r.ok) throw new Error(`backend auth set ${r.status}`);
+  }
+
+  async authUsers(): Promise<string[]> {
+    const r = await this.req('POST', '/bridge/auth/users', {});
+    if (!r.ok) throw new Error(`backend auth users ${r.status}`);
+    return ((await r.json()) as { users: string[] }).users;
+  }
+
+  async authWipe(userId: string): Promise<void> {
+    const r = await this.req('POST', '/bridge/auth/wipe', { user_id: userId });
+    if (!r.ok) throw new Error(`backend auth wipe ${r.status}`);
+  }
+
   async nextJob(users?: string[]): Promise<OutboundJob | null> {
     const r = await this.req('POST', '/bridge/outbox/next', { users: users ?? [] });
     if (!r.ok) throw new Error(`backend outbox ${r.status}`);

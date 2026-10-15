@@ -7,6 +7,8 @@ export interface Config {
   pollMs: number;
   humanDelay: boolean;
   heartbeatFile: string;
+  /** file = credentials in WA_SESSION_DIR (VM, home); db = encrypted in the backend database (hosts with no persistent disk) */
+  authStore: 'file' | 'db';
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -23,5 +25,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     pollMs: Math.max(500, parseInt(env.POLL_INTERVAL_MS ?? '2000', 10) || 2000),
     humanDelay: (env.HUMAN_DELAY ?? '1') !== '0',
     heartbeatFile: (env.HEARTBEAT_FILE ?? '/tmp/bridge.heartbeat').trim(),
+    authStore: (env.AUTH_STORE ?? 'file').trim() === 'db' ? 'db' : 'file',
   };
 }
