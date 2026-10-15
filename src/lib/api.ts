@@ -1,4 +1,5 @@
 import { createSseParser } from './sse';
+import { BackendWaking, reportReady, reportWaking } from './backend';
 import type { LiveEvent } from './types';
 
 const BASE: string = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '';
@@ -21,7 +22,15 @@ export async function api<T>(path: string, init: RequestInit & { json?: unknown 
   const h = await headers(init.headers);
   let body = init.body;
   if (init.json !== undefined) { h.set('Content-Type', 'application/json'); body = JSON.stringify(init.json); }
-  const r = await fetch(BASE + path, { ...init, headers: h, body });
+  let r: Response;
+  try { r = await fetch(BASE + path, { ...init, headers: h, body }); }
+  catch (e) {
+    // A sleeping host answers with a page that has no CORS headers, so the browser reports a plain network failure.
+    if (e instanceof TypeError) { reportWaking(); throw new BackendWaking(); }
+    throw e;
+  }
+  if ([502, 503, 504].includes(r.status) && !(r.headers.get('content-type') ?? '').includes('application/json')) { reportWaking(); throw new BackendWaking(); }
+  reportReady();
   if (r.status === 401 || r.status === 503) {
     const txt = await r.text().catch(() => 'unauthorized');
     let msg = txt;

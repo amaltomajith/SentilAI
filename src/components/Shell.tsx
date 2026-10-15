@@ -1,4 +1,5 @@
 import { NavLink, Navigate, Outlet } from 'react-router-dom';
+import { ApiGate } from '@/components/ApiGate';
 import { AppHeader, STEPS } from '@/components/AppHeader';
 import { Sprite } from '@/components/pixel/Sprite';
 import { useAppAuth } from '@/lib/auth';
@@ -13,7 +14,7 @@ export function Shell() {
   return (
     <div className="min-h-screen pb-20 md:pb-0">
       <AppHeader live={live} />
-      <main className="container py-8"><Outlet /></main>
+      <main className="container py-8"><ApiGate><Outlet /></ApiGate></main>
       <footer className="border-t border-line py-5 text-center font-mono text-[11px] text-faint">Use only against people who contacted you first and look like scammers.</footer>
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-line bg-background/90 backdrop-blur-md md:hidden" aria-label="Steps">
         {STEPS.map(([to, label], i) => (

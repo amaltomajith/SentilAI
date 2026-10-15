@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { List, X } from '@phosphor-icons/react';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/Logo';
 import { Sprite } from '@/components/pixel/Sprite';
 import { useAppAuth } from '@/lib/auth';
+import { wakeBackend } from '@/lib/backend';
 
 const LINKS = [['How it works', '#how'], ['Safety', '#safety'], ['Questions', '#faq']] as const;
 
@@ -13,6 +14,7 @@ export function Nav() {
   const [open, setOpen] = useState(false);
   const reduce = useReducedMotion();
   const { signedIn } = useAppAuth();
+  useEffect(() => { wakeBackend(); }, []);          // start the free host now, while the visitor reads the page
   const cta = signedIn ? { to: '/app', label: 'Open app' } : { to: '/sign-up', label: 'Get started' };
   return (
     <header className="sticky top-0 z-40 border-b border-line/70 bg-background/75 backdrop-blur-md">

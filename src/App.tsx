@@ -14,7 +14,14 @@ const Connect = lazy(() => import("./pages/Connect"));
 const Live = lazy(() => import("./pages/Live"));
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
+import { BackendWaking } from "@/lib/backend";
+
+// A waking backend is retried patiently (the ApiGate explains it); anything else gets one retry.
+const queryClient = new QueryClient({ defaultOptions: { queries: {
+  retry: (count, err) => (err instanceof BackendWaking ? count < 12 : count < 1),
+  retryDelay: (n) => Math.min(1000 * 1.6 ** n, 8000),
+  refetchOnWindowFocus: false,
+} } });
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

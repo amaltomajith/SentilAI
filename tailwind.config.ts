@@ -52,6 +52,7 @@ export default {
         marquee: "marquee 38s linear infinite",
         "float-y": "float-y 7s ease-in-out infinite",
         sweep: "sweep 3.2s cubic-bezier(.4,0,.2,1) infinite",
+        indeterminate: "indeterminate 1.6s ease-in-out infinite",
       },
     },
   },

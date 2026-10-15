@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { AuthenticateWithRedirectCallback, ClerkProvider, SignIn, SignUp, useAuth, useUser } from '@clerk/clerk-react';
 import { Shield } from '@phosphor-icons/react';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { setTokenProvider } from '@/lib/api';
+import { wakeBackend } from '@/lib/backend';
 
 const CLERK_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
 const DEV = import.meta.env.VITE_DEV_AUTH === '1';
@@ -73,6 +74,7 @@ function Frame({ children }: { children: ReactNode }) {
 export function SignInPage({ mode }: { mode: 'in' | 'up' }) {
   const [name, setName] = useState('');
   const { devSignIn, signedIn } = useAppAuth();
+  useEffect(() => { wakeBackend(); }, []);
   if (signedIn) return <Navigate to="/app" replace />;
   if (authMode === 'clerk') {
     return <Frame><div className="flex justify-center">{mode === 'in'
