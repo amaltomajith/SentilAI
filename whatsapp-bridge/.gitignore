@@ -1,0 +1,9 @@
+node_modules/
+dist/
+wa_session*/
+auth_info*/
+.env
+.env.*
+!.env.example
+*.log
+.heartbeat

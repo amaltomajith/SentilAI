@@ -1,0 +1,20 @@
+Metadata-Version: 2.4
+Name: sentinel
+Version: 2.0.0
+Summary: Sentinel v2 - autonomous honeypot, active-defense MCP platform, syndicate attribution
+Requires-Python: >=3.11
+Requires-Dist: fastapi
+Requires-Dist: uvicorn[standard]
+Requires-Dist: sqlalchemy>=2
+Requires-Dist: pydantic
+Requires-Dist: httpx
+Requires-Dist: mcp>=2
+Requires-Dist: networkx
+Requires-Dist: pillow
+Requires-Dist: edge-tts
+Requires-Dist: stix2
+Requires-Dist: fpdf2
+Requires-Dist: python-dotenv
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-asyncio; extra == "dev"

@@ -1,0 +1,25 @@
+# docker compose up --build     (scan the QR printed in the logs on first run)
+# The bridge exposes NO ports: it only makes outbound calls (WhatsApp + your backend).
+services:
+  bridge:
+    build: .
+    image: sentinel-wa-bridge:local
+    container_name: sentinel-bridge
+    env_file: .env
+    environment:
+      BACKEND_URL: ${BACKEND_URL:-http://host.docker.internal:8000}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - wa_session:/app/wa_session
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+volumes:
+  wa_session:
+    name: sentinel_wa_session

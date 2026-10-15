@@ -1,0 +1,23 @@
+# Optional deployment (Fly.io free allowance may change; check current limits). Pure background worker: no [http_service].
+# fly secrets set BACKEND_URL=https://your-backend BRIDGE_SHARED_SECRET=<same as backend> --app sentinel-wa-bridge
+app = "sentinel-wa-bridge"
+primary_region = "sin"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[processes]
+  app = "node dist/index.js"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+
+[[mounts]]
+  source = "wa_session"
+  destination = "/app/wa_session"
+
+[env]
+  NODE_ENV = "production"
+  WA_SESSION_DIR = "/app/wa_session"
+  LOG_LEVEL = "info"

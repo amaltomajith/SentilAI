@@ -1,0 +1,48 @@
+name: ci
+on: [push, pull_request]
+
+jobs:
+  hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: No secrets / session credentials tracked
+        run: |
+          bad=$(git ls-files | grep -E '(^|/)\.env($|\.)|wa_session|creds\.json|\.sqlite3?$|\.db$' | grep -v '\.env\.example$' || true)
+          if [ -n "$bad" ]; then echo "Tracked sensitive files:"; echo "$bad"; exit 1; fi
+          if git grep -nE '(gsk_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{20,}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}.{0,3}(SAMBANOVA|sambanova))' -- . ':!*.lock' ':!package-lock.json'; then exit 1; fi
+
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -e "backend[dev]"
+      - name: pytest (offline: fixtures only, no keys, no network)
+        working-directory: backend
+        run: python -m pytest -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx tsc -p tsconfig.app.json --noEmit
+      - run: npx eslint src --quiet
+      - run: npx vitest run
+      - run: npx vite build
+
+  bridge:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: whatsapp-bridge } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: whatsapp-bridge/package-lock.json }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build

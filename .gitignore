@@ -22,3 +22,25 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# --- Sentinel v2 hygiene ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.db
+*.sqlite
+*.sqlite3
+backend/.venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+backend/data/
+wa_session*/
+auth_info*/
+
+# vite temp files
+*.timestamp-*.mjs
