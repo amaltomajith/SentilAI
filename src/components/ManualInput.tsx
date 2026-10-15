@@ -1,79 +1,41 @@
 import { useState } from 'react';
-import { Send, User } from 'lucide-react';
+import { PaperPlaneTilt } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { cn } from '@/lib/utils';
 
 interface ManualInputProps {
   onSubmit: (message: string) => Promise<void>;
   isProcessing: boolean;
 }
 
+/** Practice composer: you type as the scammer. A command-prompt line, Enter to send, Shift+Enter for a new line. */
 export function ManualInput({ onSubmit, isProcessing }: ManualInputProps) {
   const [message, setMessage] = useState('');
 
-  const handleSubmit = () => {
-    if (message.trim() && !isProcessing) {
-      // Avoid unhandled promise rejections (can blank-screen the app)
-      void onSubmit(message.trim()).catch((err) => {
-        console.error('Manual submit error:', err);
-      });
-      setMessage('');
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
-    }
+  const submit = () => {
+    const text = message.trim();
+    if (!text || isProcessing) return;
+    void onSubmit(text).catch((err) => console.error('Manual submit error:', err));
+    setMessage('');
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
-        <User className="h-4 w-4" />
-        <span>MANUAL INJECTION MODE</span>
-        <span className="text-primary">// Type as Scammer</span>
-      </div>
-      
-      <div className="relative">
+    <div className="border-t border-line bg-surface-1/80 p-3">
+      <div className="flex items-end gap-3 rounded-md border border-line-strong bg-surface-2 px-3 py-2 focus-within:border-primary/60">
+        <span className="pb-[7px] font-mono text-primary" aria-hidden>&gt;</span>
         <Textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Enter scammer message to test agent response..."
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
+          placeholder="Type as the scammer, for example: Your account will be blocked, send Rs 500 now"
+          aria-label="Message as the scammer"
           disabled={isProcessing}
-          className={cn(
-            "min-h-[100px] font-mono bg-muted/50 border-border resize-none",
-            "focus:border-primary focus:ring-primary/20",
-            "placeholder:text-muted-foreground/50"
-          )}
+          rows={1}
+          className="min-h-[34px] max-h-32 resize-none border-0 bg-transparent px-0 py-1.5 font-mono text-[13.5px] shadow-none hover:border-0 focus-visible:border-0 focus-visible:shadow-none focus-visible:outline-none"
         />
-        
-        <Button
-          onClick={handleSubmit}
-          disabled={!message.trim() || isProcessing}
-          className={cn(
-            "absolute bottom-3 right-3",
-            "bg-primary hover:bg-primary/90 text-primary-foreground",
-            isProcessing && "animate-pulse"
-          )}
-        >
-          {isProcessing ? (
-            <>Processing...</>
-          ) : (
-            <>
-              <Send className="h-4 w-4 mr-2" />
-              Process
-            </>
-          )}
-        </Button>
+        <Button size="sm" onClick={submit} disabled={!message.trim() || isProcessing}>Send <PaperPlaneTilt size={15} weight="bold" /></Button>
       </div>
-
-      <div className="text-xs text-muted-foreground/70 font-mono">
-        Tip: Try messages like "Your account will be blocked! Send ₹500 immediately!"
-      </div>
+      <p className="mt-2 px-1 font-mono text-[10.5px] text-faint">Enter to send. Shift+Enter for a new line.</p>
     </div>
   );
 }
