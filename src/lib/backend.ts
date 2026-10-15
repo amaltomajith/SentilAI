@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 
-const BASE: string = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '';
+import { API_BASE as BASE } from '@/lib/base';
 
 /** The API host is asleep or restarting (free hosts spin down). Never shown to people as an error. */
 export class BackendWaking extends Error {

@@ -2,7 +2,7 @@ import { createSseParser } from './sse';
 import { BackendWaking, reportReady, reportWaking } from './backend';
 import type { LiveEvent } from './types';
 
-const BASE: string = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '';
+import { API_BASE as BASE } from '@/lib/base';
 
 export class AuthError extends Error {}
 
