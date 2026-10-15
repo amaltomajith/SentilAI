@@ -26,7 +26,8 @@ backend/                Python 3.11+ FastAPI (package `sentinel`), venv in backe
   scripts/bench.py          writes docs/BENCHMARKS.md        tests/   pytest, offline
 whatsapp-bridge/        TypeScript Baileys transport, ONE process, one socket PER USER (LinkManager). No AI, no HTTP listener.
 src/                    React 18 + Vite + Tailwind + shadcn/ui: lib/auth.tsx (Clerk or dev auth), pages Landing (public, /), Onboarding/Practice/Connect/Live (app, /app routes), design rules in docs/DESIGN.md
-docs/                   ARCHITECTURE.md, SAFETY.md, DESIGN.md, BENCHMARKS.md
+docs/                   ARCHITECTURE.md, SAFETY.md, DESIGN.md, DEPLOY.md, BENCHMARKS.md
+Dockerfile, docker-compose.yml, render.yaml, deploy/   one image = API + WhatsApp connector (entrypoint.sh); Render blueprint; Caddyfile; Cloudflare keep-warm Worker
 ```
 
 ## 3. Request pipeline (`orchestrator/engine.py: Engine.handle_inbound`)
@@ -51,6 +52,9 @@ Every negative-property guard has a **positive control** that first proves the f
 
 ## 8. Conventions
 Typed Python, small modules; async DB code must `commit()` before awaiting slow I/O. Prompts live in `persona.py` (victim side) and `prompts.py` (scammer simulator). IOC extraction lives only in `grounding/`. LLM calls only via `LLMClient` (`FakeLLM` in tests). New free APIs get an injectable `fetch` and an offline fixture. TS strict; UI monospace terminal aesthetic.
+
+## 8b. Deployment facts
+Auth store: `AUTH_STORE=file` (credentials on a volume) or `db` (AES-GCM blobs in `wa_auth_blobs`, key `SESSION_ENC_KEY`, endpoints `/bridge/auth/*`; blobs are bound to user and name). Nonce replay cache is in memory (single process). Link state is in memory. `normalize_url` accepts `postgres://`. Migrations: `alembic upgrade head` runs in `entrypoint.sh` for Postgres; `tests/test_migrations.py` fails if models and migrations drift; CI runs `scripts/pg_smoke.py` on real Postgres. Frontend: `ApiGate` + `lib/backend.ts` turn a sleeping host into a waking screen (never an error); `wakeBackend()` fires on landing and sign-in.
 
 ## 9. Known limitations
 In-memory WhatsApp link state (single backend process); capped linked accounts; no free always-on host for the bridge; Baileys is unofficial (ban risk); the bandit learns only over a hand-written playbook; "federated" = opt-in anonymous counters, not training; voice replies not verified on a real account; canary links need a public URL; small test corpora; SambaNova/Groq model names and limits change.

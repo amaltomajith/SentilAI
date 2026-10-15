@@ -70,6 +70,10 @@ npm run dev
 
 **Use the tools from Claude Desktop / Claude Code (MCP):** `{"command": "<repo>/backend/.venv/Scripts/python.exe", "args": ["-m", "sentinel.mcp"], "cwd": "<repo>/backend"}`.
 
+## Deploy it for free
+
+`docs/DEPLOY.md` compares the free options and has step-by-step guides. In short: the web app on **Cloudflare Pages**, the API and WhatsApp connector in **one container** (`Dockerfile`) on **Render's free tier** (with a keep-warm worker and a cold-start screen), **Supabase** Postgres, WhatsApp login stored encrypted in the database so restarts do not log anyone out. The same image runs on an Oracle Always Free VM or on your own machine with `docker compose up -d` and a free Tailscale Funnel.
+
 ## Tests and evals
 ```bash
 cd backend && python -m pytest -q      # offline: fixtures, no keys, no network
