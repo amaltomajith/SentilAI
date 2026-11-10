@@ -6,10 +6,10 @@ Command: `python -m eval.eval_classify --seed 1 --grounding v2`. Synthetic corpu
 
 | Gold \ rule verdict | scam (engage) | uncertain (halt) | benign (halt) |
 |---|---|---|---|
-| scam | 41 | 33 | 0 |
+| scam | 43 | 31 | 0 |
 | benign | 0 | 21 | 3 |
 
-- Scams engaged: **55.4%** (95% CI 44.3%–65.8%); halted: 44.6%
+- Scams engaged: **58.1%** (95% CI 46.8%–68.9%); halted: 41.9%
 - Benign messages engaged (the safety-critical error): **0.0%** (95% CI 0.0%–0.0%)
 
 #### Triage: generated openers (scam 300, benign 100)

@@ -5,15 +5,15 @@
   "n_scam": 74,
   "n_benign": 24,
   "confusion": {
-   "scam->scam": 41,
-   "scam->uncertain": 33,
+   "scam->scam": 43,
+   "scam->uncertain": 31,
    "scam->benign": 0,
    "benign->scam": 0,
    "benign->uncertain": 21,
    "benign->benign": 3
   },
-  "scam_engaged": 0.5540540540540541,
-  "scam_halted": 0.44594594594594594,
+  "scam_engaged": 0.581081081081081,
+  "scam_halted": 0.4189189189189189,
   "benign_engaged": 0.0,
   "benign_halted": 1.0
  },

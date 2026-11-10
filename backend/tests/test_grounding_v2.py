@@ -39,7 +39,7 @@ def test_v1_is_unchanged_on_the_whole_corpus():
     assert (t["tp"], t["fp"], t["fn"]) == (87, 13, 16)
     b = eval_ioc.totals(res["rows"], "bank_account")
     assert (b["tp"], b["tp"] + b["fp"]) == (64, 116)
-    for r in recs + synth.build_corpus(1, corpus="heldout"):
+    for r in recs + synth.build_corpus(1, corpus="heldout") + synth.build_corpus(1, corpus="heldout3"):
         assert extract_candidates(r["text"]) == extract_candidates(r["text"], v2=False)
 
 
@@ -52,6 +52,15 @@ def test_v1_is_unchanged_on_the_whole_corpus():
     ("Open www.synth-kyc.example now", set(), {("url", "www.synth-kyc.example")}),
     ("Pay on synthkyc @ ybl quickly", set(), {("upi", "synthkyc@ybl")}),                               # spaced @
     ("कॉल करें ७००००००००१", set(), {("phone", "7000000001")}),                                     # Devanagari digits
+    ("GPay synthkyc at ybl now", set(), {("upi", "synthkyc@ybl")}),                                     # "at" spelled out
+    ("UPI synthkyc(at)oksbi", set(), {("upi", "synthkyc@oksbi")}),
+    ("VPA synthkyc[at]ybl", set(), {("upi", "synthkyc@ybl")}),
+    ("Open hxxp://synth-kyc[.]example/pay", set(), {("url", "http://synth-kyc.example/pay")}),         # defanged
+    ("Track at synth-kyc[dot]example/t", set(), {("url", "synth-kyc.example/t")}),
+    ("Link http://synth-kyc . example/pay", {("url", "http://synth-kyc")}, {("url", "http://synth-kyc.example/pay")}),
+    ("A/c 000000001234 ifsc synt0000001", set(), {("bank_account", "000000001234"), ("ifsc", "SYNT0000001")}),   # IFSC case
+    ("IFSC code SYNT 0000001", set(), {("ifsc", "SYNT0000001")}),
+    ("Call 700.000.0001.", set(), {("phone", "7000000001")}),                                           # dotted phone
 ])
 def test_each_v2_fix_with_v1_as_positive_control(text, v1_wrong, v2_expected):
     v1, v2 = kv(extract_grounded(text, v2=False)), kv(extract_grounded(text, v2=True))
@@ -64,7 +73,9 @@ def test_v2_keeps_hinted_accounts_phones_after_weak_labels_and_ignores_non_links
     assert kv(extract_grounded("Complaint ID 000000001234. Call 7000000001", v2=True)) == {("phone", "7000000001")}
     assert kv(extract_grounded("Case id 7000000001", v2=True)) == {("phone", "7000000001")}
     for text in ("Meet at 5.in the evening", "Version 2.1.4 needed", "Rs.500 only", "Meet me @ 5 pm", "hello @ home",
-                 "Mail refunds@desk-help.example", "File report.pdf attached"):
+                 "Mail refunds@desk-help.example", "File report.pdf attached",
+                 "Transfer to account at sbi", "Send Rs 500 at upi", "Pay the fee at paytm counter", "Waiting at icici atm",
+                 "I am at sbi branch", "Use code welcome0offer", "Ref [1] and [2]", "Meeting at 4.30 p.m.", "Amount 2.500 lakh"):
         assert extract_grounded(text, v2=True) == [], text
 
 
@@ -75,6 +86,20 @@ def test_literal_rule_still_holds_under_v2():
     assert ground([c], real, v2=True)[0].accepted                      # positive control
     assert ground([c], lookalike, v2=True)[0].reason == "not_in_message"
     assert ground([Candidate("url", "synth-kyc.example/pay")], "nothing here", v2=True)[0].reason == "not_in_message"
+
+
+def test_obfuscated_decoys_are_rejected():
+    text = "GPay synthdecoy.kyc at ybl failed, also hxxp://synthdecoy[.]example/x. Pay synthkyc@ybl"
+    assert {("upi", "synthdecoy.kyc@ybl"), ("url", "http://synthdecoy.example/x")} <= kv(extract_grounded(text, v2=True))   # control
+    got = kv(extract_grounded(text, {"synthdecoy.kyc@ybl", "synthdecoy.example"}, v2=True))
+    assert got == {("upi", "synthkyc@ybl")}
+
+
+def test_literal_rule_rejects_lookalikes_in_obfuscated_forms():
+    assert ground([Candidate("upi", "synthkyc@ybl")], "pay synthkyc at ybl", v2=True)[0].accepted          # control
+    assert not ground([Candidate("upi", "synthkyc@ybl")], "pay synthkус at ybl", v2=True)[0].accepted      # Cyrillic
+    assert not ground([Candidate("upi", "synthkyc@ybl")], "pay synthkyc at ybl", v2=False)[0].accepted    # v1 unchanged
+    assert not ground([Candidate("ifsc", "SYNT0000001")], "ifsc ѕynt0000001", v2=True)[0].accepted          # Cyrillic s
 
 
 def test_scheme_less_decoy_is_rejected_by_host():

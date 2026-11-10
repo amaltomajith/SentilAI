@@ -189,7 +189,7 @@ def load_handwritten(path: Path = HANDWRITTEN) -> list[dict]:
 
 
 def build_corpus(seed: int, n_scam: int = 300, n_benign: int = 100, corpus: str = "main") -> list[dict]:
-    """corpus="main": hand-written + generated (the original evaluation); "heldout": the held-out set only."""
+    """corpus="main": hand-written + generated (the original evaluation); "heldout" / "heldout3": one held-out set only."""
     rng = random.Random(seed)
     if corpus == "heldout3":
         return [render(r, rng) | {"seed": seed} for r in load_handwritten(HELDOUT_V3)]

@@ -164,18 +164,21 @@ def compare(seed: int) -> str:
     L = [f"### Grounding v1 vs v2 (synthetic, seed {seed})", "",
          f"Command: `python -m eval.eval_ioc --compare --seed {seed}`. v2 is OFF in production unless `SENTINEL_GROUNDING_V2=1`.",
          "", "*Main* = the corpus whose failure report v2 was written to fix, so its v2 numbers are optimistic. "
-         "*Held-out* = 49 cases written before any v2 code and never used to tune it.", "",
+         "*Held-out* = 49 cases written before any v2 code and never used to tune it. "
+         "*Held-out v3* = 32 cases for the obfuscation fixes (at / defanged links / IFSC case / dotted phones), written before "
+         "that code. Its first run found 25 of 30 (three bugs in the new code); after fixing them it is no longer unseen.", "",
          "| Corpus | Kind | v1 precision | v2 precision | v1 recall | v2 recall | v1 FP | v2 FP | v1 FN | v2 FN |",
          "|---|---|---|---|---|---|---|---|---|---|"]
-    for corpus, sources in (("main: hand-written", ("handwritten",)), ("main: generated", ("generated",)), ("held-out", ("heldout",))):
-        recs = [r for r in synth.build_corpus(seed, corpus="heldout" if corpus == "held-out" else "main") if r["source"] in sources]
+    for corpus, name, source in (("main: hand-written", "main", "handwritten"), ("main: generated", "main", "generated"),
+                                 ("held-out", "heldout", "heldout"), ("held-out v3", "heldout3", "heldout3")):
+        recs = [r for r in synth.build_corpus(seed, corpus=name) if r["source"] == source]
         a, b = evaluate_version(recs, False), evaluate_version(recs, True)
         for kind in list(KINDS) + [None]:
             ca, cb = totals(a["rows"], kind), totals(b["rows"], kind)
             (pa, ra, _), (pb, rb, _) = prf(ca), prf(cb)
             L.append(f"| {corpus} | {kind or '**all**'} | {fmt(pa)} | {fmt(pb)} | {fmt(ra)} | {fmt(rb)} | {ca['fp']} | {cb['fp']} | {ca['fn']} | {cb['fn']} |")
         L.append(f"| {corpus} | decoys accepted | {a['honey_accepted']} | {b['honey_accepted']} | | | | | | |")
-    ho = synth.build_corpus(seed, corpus="heldout")
+    ho = synth.build_corpus(seed, corpus="heldout") + synth.build_corpus(seed, corpus="heldout3")
     L += ["", "#### Held-out failures left under v2", ""] + failures(evaluate_version(ho, True)["rows"])[2:]
     return "\n".join(L)
 
@@ -184,7 +187,7 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--out", default=None)
-    ap.add_argument("--corpus", choices=("main", "heldout"), default="main")
+    ap.add_argument("--corpus", choices=("main", "heldout", "heldout3"), default="main")
     ap.add_argument("--grounding", choices=("v1", "v2"), default="v1", help="v1 = production default")
     ap.add_argument("--compare", action="store_true", help="v1 vs v2 on the main and held-out corpora")
     a = ap.parse_args(argv)
