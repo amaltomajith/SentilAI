@@ -209,7 +209,7 @@ class Engine:
             if sess.pending_tactic and sess.user_id:          # learn from the previous tactic: did it make the scammer reveal something new?
                 prev_type, _, prev_tac = sess.pending_tactic.partition("|")
                 targets = PLOYS[prev_tac].targets if prev_tac in PLOYS else ()
-                hit = any((n["kind"] in targets) if targets else True for n in new_iocs)
+                hit = bandit.tactic_hit(targets, [n["kind"] for n in new_iocs])
                 if sess.kind in PRACTICE_KINDS and self.settings.bandit_exclude_practice:
                     # a rehearsal is not evidence about real scammers: keep it out of the learner, but leave an audit trail
                     ledger.append(db, sess, "note", {"event": "tactic_outcome_not_learned", "reason": "practice_session",

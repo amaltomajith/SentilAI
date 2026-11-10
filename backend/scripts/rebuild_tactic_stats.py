@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sqlalchemy import select  # noqa: E402
 
 from sentinel.db.models import Ioc, Session, TacticStat, ToolTrace, User  # noqa: E402
-from sentinel.orchestrator.bandit import GLOBAL  # noqa: E402
+from sentinel.orchestrator.bandit import GLOBAL, tactic_hit  # noqa: E402
 from sentinel.orchestrator.engine import PRACTICE_KINDS  # noqa: E402
 from sentinel.orchestrator.ploys import PLOYS  # noqa: E402
 
@@ -52,7 +52,7 @@ def replay(db, exclude_kinds: frozenset[str] = frozenset()) -> tuple[dict[Key, l
             if pending is not None:
                 scam_type, tactic = pending
                 targets = PLOYS[tactic].targets if tactic in PLOYS else ()
-                hit = any((k in targets) if targets else True for k in revealed)
+                hit = tactic_hit(targets, revealed)
                 scored_by_kind[s.kind] += 1
                 if s.kind not in exclude_kinds:
                     for scope in [s.user_id] + ([GLOBAL] if opt_in.get(s.user_id) else []):
