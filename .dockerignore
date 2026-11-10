@@ -19,3 +19,4 @@ docs
 src
 public
 *.md
+backend/eval
