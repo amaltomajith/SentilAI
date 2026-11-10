@@ -124,7 +124,7 @@ def failures(rows) -> list[str]:
             by_tag[tag]["records"] += 1
             by_tag[tag]["fn"] += c["fn"]
             by_tag[tag]["fp"] += c["fp"]
-        if rec["source"] in ("handwritten", "heldout"):
+        if rec["source"] in ("handwritten", "heldout", "heldout3"):
             examples[rec["tags"][0]].append(f"- `{rec['id']}` {'; '.join(misses)}: `{rec['template']}`")
     L = ["#### Failures by tag (records with at least one miss or wrong value)", "", "| Tag | Records | Missed | Wrong |", "|---|---|---|---|"]
     L += [f"| {t} | {c['records']} | {c['fn']} | {c['fp']} |" for t, c in sorted(by_tag.items(), key=lambda x: (-x[1]["fn"] - x[1]["fp"], x[0]))]

@@ -22,6 +22,7 @@ GENERATOR_VERSION = "1"
 HERE = Path(__file__).resolve().parent
 HANDWRITTEN = HERE / "corpus" / "handwritten.jsonl"
 HELDOUT = HERE / "corpus" / "heldout_v2.jsonl"      # written before the grounding v2 change; never used for tuning
+HELDOUT_V3 = HERE / "corpus" / "heldout_v3.jsonl"   # written before the obfuscation fixes (at / [.] / hxxp / IFSC case); never tuned on
 SLOT_RE = re.compile(r"\{([A-Z]+)_(\d+)(?:\|([a-z0-9_+]+))?\}")
 DEVANAGARI = str.maketrans("0123456789", "०१२३४५६७८९")
 PSPS = ["ybl", "okaxis", "paytm", "oksbi", "okhdfcbank", "ibl", "upi", "axl", "okicici"]
@@ -78,15 +79,18 @@ def render_value(slot: Slot, fmt: str | None) -> str:
                 "triple": f"{v[:3]} {v[3:6]} {v[6:]}"}[f]
     if slot.kind in ("UPI", "DECOY"):
         user, psp = v.split("@")
-        return {"plain": v, "spaced": f"{user} @ {psp}", "atword": f"{user} at {psp}", "upper": v.upper(), "paren": f"{user}(at){psp}"}[f]
+        return {"plain": v, "spaced": f"{user} @ {psp}", "atword": f"{user} at {psp}", "upper": v.upper(), "paren": f"{user}(at){psp}",
+                "bracket": f"{user}[at]{psp}", "atcaps": f"{user} AT {psp}"}[f]
     if slot.kind == "URL":
         host = v.split("/")[0]
         return {"plain": "http://" + v, "https": "https://" + v, "noscheme": v, "www": "www." + v, "defanged": "hxxp://" + v.replace(".", "[.]", 1),
-                "spaced_dot": "http://" + host.replace(".", " . ", 1) + v[len(host):]}[f]
+                "spaced_dot": "http://" + host.replace(".", " . ", 1) + v[len(host):],
+                "defanged_s": "hxxps://" + host.replace(".", "[.]") + v[len(host):], "dotword": host.replace(".", "[dot]") + v[len(host):],
+                "paren_dot": "https://" + host.replace(".", "(.)") + v[len(host):]}[f]
     if slot.kind == "ACCT":
         return {"plain": v, "grouped": " ".join(v[i:i + 4] for i in range(0, len(v), 4)), "dev": v.translate(DEVANAGARI)}[f]
     if slot.kind == "IFSC":
-        return {"plain": v, "lower": v.lower(), "spaced": f"{v[:4]} {v[4:]}"}[f]
+        return {"plain": v, "lower": v.lower(), "spaced": f"{v[:4]} {v[4:]}", "lower_spaced": f"{v[:4].lower()} {v[4:].lower()}"}[f]
     if slot.kind in ("CARD", "AADHAAR"):
         return {"plain": v, "grouped": " ".join(v[i:i + 4] for i in range(0, len(v), 4))}[f]
     if slot.kind == "TOLLFREE":
@@ -187,6 +191,8 @@ def load_handwritten(path: Path = HANDWRITTEN) -> list[dict]:
 def build_corpus(seed: int, n_scam: int = 300, n_benign: int = 100, corpus: str = "main") -> list[dict]:
     """corpus="main": hand-written + generated (the original evaluation); "heldout": the held-out set only."""
     rng = random.Random(seed)
+    if corpus == "heldout3":
+        return [render(r, rng) | {"seed": seed} for r in load_handwritten(HELDOUT_V3)]
     records = load_handwritten(HELDOUT) if corpus == "heldout" else load_handwritten() + generate(n_scam, n_benign, random.Random(seed + 1))
     return [render(r, rng) | {"seed": seed} for r in records]
 
