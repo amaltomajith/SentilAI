@@ -1,4 +1,4 @@
-### C7 triage and scam-type rules (seed 1, generator v1)
+### C7 triage and scam-type rules (seed 1, generator v1, grounding v1)
 
 Command: `python -m eval.eval_classify --seed 1`. Synthetic corpus unless marked as the public dataset. Rules only, no LLM.
 
@@ -21,6 +21,16 @@ Command: `python -m eval.eval_classify --seed 1`. Synthetic corpus unless marked
 
 - Scams engaged: **67.7%** (95% CI 62.4%–72.7%); halted: 32.3%
 - Benign messages engaged (the safety-critical error): **31.0%** (95% CI 22.3%–40.9%)
+
+#### Triage: held-out openers (written before grounding v2) (scam 36, benign 11)
+
+| Gold \ rule verdict | scam (engage) | uncertain (halt) | benign (halt) |
+|---|---|---|---|
+| scam | 15 | 21 | 0 |
+| benign | 3 | 8 | 0 |
+
+- Scams engaged: **41.7%** (95% CI 25.0%–56.8%); halted: 58.3%
+- Benign messages engaged (the safety-critical error): **27.3%** (95% CI 0.0%–57.1%)
 
 Why benign messages were engaged: 34 of 34 had an extracted `bank_account` among the triage reasons (a payment rail adds 2 to the score). See the C3 report: these are toll-free or reference numbers read as accounts.
 

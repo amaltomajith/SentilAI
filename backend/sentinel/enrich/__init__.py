@@ -3,9 +3,9 @@ All network access goes through the SSRF guard; every function takes an injectab
 from __future__ import annotations
 
 import re
-from urllib.parse import urlparse
 
 from sentinel.security import safe_get_json
+from sentinel.grounding import url_host
 
 PSP = {
     "ybl": ("PhonePe", "Yes Bank"), "ibl": ("PhonePe", "ICICI Bank"), "axl": ("PhonePe", "Axis Bank"),
@@ -61,7 +61,7 @@ async def enrich_ifsc(code: str, fetch=safe_get_json) -> dict:
 
 
 async def enrich_domain(url_or_domain: str, fetch=safe_get_json) -> dict:
-    host = (urlparse(url_or_domain).hostname if "://" in url_or_domain else url_or_domain).lower().strip(".")
+    host = url_host(url_or_domain).strip(".")   # works for "x.in", "x.in/path" and "https://x.in/path"
     out = {"domain": host, "source": "rdap.org"}
     try:
         d = await fetch(f"https://rdap.org/domain/{host}")

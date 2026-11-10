@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Callable
 
 from eval import synth
+from sentinel import grounding
 from eval.stats import bootstrap_ci, fmt, ratio
 from sentinel.orchestrator.strategy import analyze
 from sentinel.orchestrator.triage import rule_triage
@@ -118,13 +119,19 @@ def uci_section(path: Path) -> tuple[list[str], dict | None]:
     return L, m
 
 
-def report(seed: int, uci: Path) -> tuple[str, dict]:
+def report(seed: int, uci: Path, v2: bool = False) -> tuple[str, dict]:
+    prev = grounding.v2_enabled()
+    grounding.use_v2(v2)        # triage reads the extractor through the module default, as in production
     recs = synth.build_corpus(seed)
     openers = [r for r in recs if r["turn"] == "opener"]
-    L = [f"### C7 triage and scam-type rules (seed {seed}, generator v{synth.GENERATOR_VERSION})", "",
-         f"Command: `python -m eval.eval_classify --seed {seed}`. Synthetic corpus unless marked as the public dataset. Rules only, no LLM.", ""]
+    ver = "v2" if v2 else "v1"
+    L = [f"### C7 triage and scam-type rules (seed {seed}, generator v{synth.GENERATOR_VERSION}, grounding {ver})", "",
+         f"Command: `python -m eval.eval_classify --seed {seed}{' --grounding v2' if v2 else ''}`. "
+         "Synthetic corpus unless marked as the public dataset. Rules only, no LLM.", ""]
     hw, gen = [r for r in openers if r["source"] == "handwritten"], [r for r in openers if r["source"] == "generated"]
+    ho = [r for r in synth.build_corpus(seed, corpus="heldout") if r["turn"] == "opener"]
     L += triage_table(triage_rows(hw), "hand-written openers") + triage_table(triage_rows(gen), "generated openers")
+    L += triage_table(triage_rows(ho), "held-out openers (written before grounding v2)")
     engaged = [rule_triage(r["text"]) for r in openers if r["triage"] == "benign"]
     engaged = [t for t in engaged if t.verdict == "scam"]
     via_acct = sum("bank_account" in t.reasons for t in engaged)
@@ -135,8 +142,10 @@ def report(seed: int, uci: Path) -> tuple[str, dict]:
     u_lines, u = uci_section(uci)
     L += u_lines
     summary = {"seed": seed, "synthetic": True, "triage_handwritten": triage_metrics(triage_rows(hw)), "triage_generated": triage_metrics(triage_rows(gen)),
+               "triage_heldout": triage_metrics(triage_rows(ho)), "grounding": ver,
                "scam_type": {k: {kk: vv for kk, vv in v.items() if kk != "top_confusions"} for k, v in st.items()},
                "uci_sms_spam": u}
+    grounding.use_v2(prev)
     return "\n".join(L), summary
 
 
@@ -144,10 +153,14 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--uci", default=str(UCI_DEFAULT))
-    ap.add_argument("--out-md", default=str(REPORT_MD))
-    ap.add_argument("--out-json", default=str(REPORT_JSON))
+    ap.add_argument("--out-md", default=None)
+    ap.add_argument("--out-json", default=None)
+    ap.add_argument("--grounding", choices=("v1", "v2"), default="v1", help="v1 = production default")
     a = ap.parse_args(argv)
-    text, summary = report(a.seed, Path(a.uci))
+    v2 = a.grounding == "v2"
+    a.out_md = a.out_md or str(REPORT_MD.with_name("classify_v2.md") if v2 else REPORT_MD)
+    a.out_json = a.out_json or str(REPORT_JSON.with_name("classify_v2.json") if v2 else REPORT_JSON)
+    text, summary = report(a.seed, Path(a.uci), v2)
     Path(a.out_md).parent.mkdir(parents=True, exist_ok=True)
     Path(a.out_md).write_text(text + "\n", encoding="utf-8")
     Path(a.out_json).write_text(json.dumps(summary, indent=1) + "\n", encoding="utf-8")

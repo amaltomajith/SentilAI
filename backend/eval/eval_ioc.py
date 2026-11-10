@@ -124,7 +124,7 @@ def failures(rows) -> list[str]:
             by_tag[tag]["records"] += 1
             by_tag[tag]["fn"] += c["fn"]
             by_tag[tag]["fp"] += c["fp"]
-        if rec["source"] == "handwritten":
+        if rec["source"] in ("handwritten", "heldout"):
             examples[rec["tags"][0]].append(f"- `{rec['id']}` {'; '.join(misses)}: `{rec['template']}`")
     L = ["#### Failures by tag (records with at least one miss or wrong value)", "", "| Tag | Records | Missed | Wrong |", "|---|---|---|---|"]
     L += [f"| {t} | {c['records']} | {c['fn']} | {c['fp']} |" for t, c in sorted(by_tag.items(), key=lambda x: (-x[1]["fn"] - x[1]["fp"], x[0]))]
@@ -134,26 +134,66 @@ def failures(rows) -> list[str]:
     return L
 
 
-def report(seed: int) -> str:
-    recs = synth.build_corpus(seed)
-    res = evaluate(recs)
-    hw = [r for r in res["rows"] if r["rec"]["source"] == "handwritten"]
-    gen = [r for r in res["rows"] if r["rec"]["source"] == "generated"]
-    L = [f"### C3 IOC extraction (synthetic, seed {seed}, generator v{synth.GENERATOR_VERSION})", "",
-         "Command: `python -m eval.eval_ioc --seed %d`. All records are synthetic; hand-written and generated results are separate." % seed, ""]
-    L += table(hw, "Hand-written cases") + table(gen, "Generated messages") + table(res["rows"], "All")
+def evaluate_version(records: list[dict], v2: bool) -> dict:
+    """Same production code path, with the grounding version pinned (v1 = today's default, v2 = SENTINEL_GROUNDING_V2=1)."""
+    return evaluate(records, extract=lambda text: grounding.extract_candidates(text, v2),
+                    ground=lambda cands, text, honey=frozenset(): grounding.ground(cands, text, honey, v2))
+
+
+def report(seed: int, corpus: str = "main", v2: bool = False) -> str:
+    recs = synth.build_corpus(seed, corpus=corpus)
+    res = evaluate_version(recs, v2)
+    ver = "v2" if v2 else "v1"
+    flags = (" --corpus %s" % corpus if corpus != "main" else "") + (" --grounding v2" if v2 else "")
+    L = [f"### C3 IOC extraction (synthetic, seed {seed}, generator v{synth.GENERATOR_VERSION}, corpus {corpus}, grounding {ver})", "",
+         f"Command: `python -m eval.eval_ioc --seed {seed}{flags}`. All records are synthetic; each source is reported separately.", ""]
+    for source in ("handwritten", "generated", "heldout"):
+        rows = [r for r in res["rows"] if r["rec"]["source"] == source]
+        if rows:
+            L += table(rows, {"handwritten": "Hand-written cases", "generated": "Generated messages", "heldout": "Held-out cases"}[source])
+    if corpus == "main":
+        L += table(res["rows"], "All")
     L += [f"Decoy (honey-token) values accepted as scammer IOCs: **{res['honey_accepted']}** in {res['honey_records']} records that echo a decoy (must be 0).",
           f"Candidates rejected by grounding: {dict(res['rejected']) or 'none'}.", ""]
     L += failures(res["rows"])
     return "\n".join(L)
 
 
+def compare(seed: int) -> str:
+    """v1 vs v2 on the corpus v2 was developed against (seen) and on the held-out set written before v2 (unseen)."""
+    L = [f"### Grounding v1 vs v2 (synthetic, seed {seed})", "",
+         f"Command: `python -m eval.eval_ioc --compare --seed {seed}`. v2 is OFF in production unless `SENTINEL_GROUNDING_V2=1`.",
+         "", "*Main* = the corpus whose failure report v2 was written to fix, so its v2 numbers are optimistic. "
+         "*Held-out* = 49 cases written before any v2 code and never used to tune it.", "",
+         "| Corpus | Kind | v1 precision | v2 precision | v1 recall | v2 recall | v1 FP | v2 FP | v1 FN | v2 FN |",
+         "|---|---|---|---|---|---|---|---|---|---|"]
+    for corpus, sources in (("main: hand-written", ("handwritten",)), ("main: generated", ("generated",)), ("held-out", ("heldout",))):
+        recs = [r for r in synth.build_corpus(seed, corpus="heldout" if corpus == "held-out" else "main") if r["source"] in sources]
+        a, b = evaluate_version(recs, False), evaluate_version(recs, True)
+        for kind in list(KINDS) + [None]:
+            ca, cb = totals(a["rows"], kind), totals(b["rows"], kind)
+            (pa, ra, _), (pb, rb, _) = prf(ca), prf(cb)
+            L.append(f"| {corpus} | {kind or '**all**'} | {fmt(pa)} | {fmt(pb)} | {fmt(ra)} | {fmt(rb)} | {ca['fp']} | {cb['fp']} | {ca['fn']} | {cb['fn']} |")
+        L.append(f"| {corpus} | decoys accepted | {a['honey_accepted']} | {b['honey_accepted']} | | | | | | |")
+    ho = synth.build_corpus(seed, corpus="heldout")
+    L += ["", "#### Held-out failures left under v2", ""] + failures(evaluate_version(ho, True)["rows"])[2:]
+    return "\n".join(L)
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--seed", type=int, default=1)
-    ap.add_argument("--out", default=str(REPORT))
+    ap.add_argument("--out", default=None)
+    ap.add_argument("--corpus", choices=("main", "heldout"), default="main")
+    ap.add_argument("--grounding", choices=("v1", "v2"), default="v1", help="v1 = production default")
+    ap.add_argument("--compare", action="store_true", help="v1 vs v2 on the main and held-out corpora")
     a = ap.parse_args(argv)
-    text = report(a.seed)
+    if a.compare:
+        text, out = compare(a.seed), a.out or str(REPORT.with_name("ioc_v2.md"))
+    else:
+        text = report(a.seed, a.corpus, a.grounding == "v2")
+        out = a.out or str(REPORT if (a.corpus, a.grounding) == ("main", "v1") else REPORT.with_name(f"ioc_{a.corpus}_{a.grounding}.md"))
+    a.out = out
     Path(a.out).parent.mkdir(parents=True, exist_ok=True)
     Path(a.out).write_text(text + "\n", encoding="utf-8")
     print(text)

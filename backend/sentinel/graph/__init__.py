@@ -19,8 +19,8 @@ STRONG = 0.7
 
 
 def _domain(url: str) -> str:
-    from urllib.parse import urlparse
-    return (urlparse(url).hostname or "").lower()
+    from sentinel.grounding import url_host   # handles scheme-less links (grounding v2)
+    return url_host(url)
 
 
 def session_artifacts(db: DbSession, only: set[str] | None = None) -> dict[str, set[tuple[str, str]]]:

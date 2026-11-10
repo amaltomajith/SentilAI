@@ -33,6 +33,23 @@
   "benign_engaged": 0.31,
   "benign_halted": 0.69
  },
+ "triage_heldout": {
+  "n_scam": 36,
+  "n_benign": 11,
+  "confusion": {
+   "scam->scam": 15,
+   "scam->uncertain": 21,
+   "scam->benign": 0,
+   "benign->scam": 3,
+   "benign->uncertain": 8,
+   "benign->benign": 0
+  },
+  "scam_engaged": 0.4166666666666667,
+  "scam_halted": 0.5833333333333334,
+  "benign_engaged": 0.2727272727272727,
+  "benign_halted": 0.7272727272727273
+ },
+ "grounding": "v1",
  "scam_type": {
   "hand-written openers": {
    "n": 74,

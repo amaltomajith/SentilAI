@@ -1,6 +1,6 @@
-### C3 IOC extraction (synthetic, seed 1, generator v1)
+### C3 IOC extraction (synthetic, seed 1, generator v1, corpus main, grounding v1)
 
-Command: `python -m eval.eval_ioc --seed 1`. All records are synthetic; hand-written and generated results are separate.
+Command: `python -m eval.eval_ioc --seed 1`. All records are synthetic; each source is reported separately.
 
 #### Hand-written cases (records: 122)
 

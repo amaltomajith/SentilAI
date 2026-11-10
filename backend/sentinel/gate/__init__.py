@@ -12,7 +12,7 @@ import hashlib
 import re
 from dataclasses import dataclass, field
 
-from sentinel.grounding import extract_candidates
+from sentinel.grounding import extract_for_leak_check
 
 MAX_WORDS = 60
 
@@ -118,7 +118,7 @@ def detect(text: str, approved: set[str] | frozenset[str] = frozenset(), protect
         m = p.search(text)
         if m:
             out.append(Violation("injection_compliance", m.group(0)[:40]))
-    for c in extract_candidates(text):
+    for c in extract_for_leak_check(text):
         if _norm(c.value) not in approved_n:
             out.append(Violation("leak", f"{c.kind}:{c.value}"))
     for m in _LONGNUM.finditer(re.sub(r"[\s-]", "", text)):

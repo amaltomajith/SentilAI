@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import urlparse
 
 import stix2
 from sqlalchemy import select
@@ -14,6 +13,7 @@ from sqlalchemy.orm import Session as DbSession
 from sentinel import ledger
 from sentinel.db.models import CanaryHit, Canary, Ioc, Session, Takedown
 from sentinel.enrich import BANKS, enrich_domain, enrich_ifsc
+from sentinel.grounding import url_host
 
 OUTBOX = Path(__file__).resolve().parents[2] / "data" / "outbox"
 
@@ -96,7 +96,7 @@ async def create_drafts(db: DbSession, session: Session, *, fetch=None, domain_f
         db.add(td)
         drafts.append(td)
 
-    domains = {urlparse(i.value).hostname for i in iocs if i.kind == "url" and urlparse(i.value).hostname}
+    domains = {url_host(i.value) for i in iocs if i.kind == "url" and url_host(i.value)}
     for d in sorted(domains):
         info = await (enrich_domain(d, fetch=domain_fetch) if domain_fetch else enrich_domain(d))
         rcpt = info.get("abuse_email") or f"abuse desk of registrar {info.get('registrar') or '(unknown - look up WHOIS)'}"
