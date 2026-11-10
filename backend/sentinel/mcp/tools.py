@@ -80,6 +80,7 @@ async def t_select_tactic(ctx: ToolContext, session_id: str, scam_type: str = "o
     s = _sess(ctx, session_id)
     captured = {i.kind for i in session_iocs(ctx, session_id)}
     scores: dict[str, float] = {}
+    shadow: dict | None = None
     if s.exchange_count >= 10:
         p = PLOYS["wind_down"]
     elif scammer_asked_screenshot:
@@ -88,11 +89,26 @@ async def t_select_tactic(ctx: ToolContext, session_id: str, scam_type: str = "o
         full = ploy_order(captured, s.exchange_count, scam_type)
         order = [x for x in full if x != last_ploy] or full
         u = ctx.db.get(User, s.user_id) if s.user_id else None
-        stats = bandit.load_stats(ctx.db, scam_type, s.user_id, bool(u and u.collective_opt_in)) if s.user_id else {}
+        use_global = bool(u and u.collective_opt_in)
+        stats = bandit.load_stats(ctx.db, scam_type, s.user_id, use_global) if s.user_id else {}
         choice, scores = bandit.choose(order[:5], stats, random.Random(f"{session_id}:{s.exchange_count}"))
         p = PLOYS[choice]
-    return {"ploy_id": p.id, "targets": list(p.targets), "instruction": p.instruction, "scam_type": scam_type,
-            "captured": sorted(captured), "missing": missing_targets(captured), "candidates": scores}
+        if ctx.settings.bandit_shadow_policy in ("pooled", "backoff"):
+            shadow = _shadow_choice(ctx, s, order[:5], stats, use_global, choice)
+    out = {"ploy_id": p.id, "targets": list(p.targets), "instruction": p.instruction, "scam_type": scam_type,
+           "captured": sorted(captured), "missing": missing_targets(captured), "candidates": scores}
+    if shadow is not None:
+        out["shadow"] = shadow
+    return out
+
+
+def _shadow_choice(ctx: ToolContext, s: Session, options: list[str], type_stats: dict, use_global: bool, live: str) -> dict:
+    """What the shadow policy would pick. Reads only; uses its OWN random stream so the live choice cannot change."""
+    policy = ctx.settings.bandit_shadow_policy
+    pooled = bandit.load_pooled_stats(ctx.db, s.user_id, use_global) if s.user_id else {}
+    stats = pooled if policy == "pooled" else bandit.backoff_stats(type_stats, pooled, options)
+    choice, scores = bandit.choose(options, stats, random.Random(f"shadow:{s.id}:{s.exchange_count}"))
+    return {"policy": policy, "ploy_id": choice, "agrees": choice == live, "candidates": scores}
 
 
 @tool("get_session_iocs", "List verified (literal-grounded) IOCs captured in a session.",

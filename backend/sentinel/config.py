@@ -37,6 +37,9 @@ class Settings:
     # Practice sessions (AI scammer simulations and "I'll type as the scammer") must not teach the tactic learner.
     # Bug fix, ON by default; set SENTINEL_BANDIT_EXCLUDE_PRACTICE=0 to restore the old behaviour (learn from every session).
     bandit_exclude_practice: bool = field(default_factory=lambda: _env("SENTINEL_BANDIT_EXCLUDE_PRACTICE", "1") == "1")
+    # Shadow tactic policy: "" (off, default) | "pooled" | "backoff". Computes and logs what that policy WOULD pick next to the
+    # live choice (ToolTrace + ledger); it never changes the live choice. See eval/reports/bandit_sim.md.
+    bandit_shadow_policy: str = field(default_factory=lambda: _env("SENTINEL_BANDIT_SHADOW_POLICY", "").strip().lower())
 
 
 def get_settings() -> Settings:
