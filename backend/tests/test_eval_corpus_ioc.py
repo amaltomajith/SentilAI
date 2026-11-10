@@ -25,8 +25,8 @@ def test_positive_control_the_scanner_flags_realistic_values():
 
 
 def test_committed_corpus_has_no_realistic_identifiers_and_valid_slots():
-    recs = synth.load_handwritten()
-    assert len(recs) >= 100 and len({r["id"] for r in recs}) == len(recs)
+    recs = synth.load_handwritten() + synth.load_handwritten(synth.HELDOUT)
+    assert len(recs) >= 150 and len({r["id"] for r in recs}) == len(recs)
     for r in recs:
         assert not realistic_identifiers(r["text"]), (r["id"], realistic_identifiers(r["text"]))
         slots = {f"{m.group(1)}_{m.group(2)}" for m in synth.SLOT_RE.finditer(r["text"])}

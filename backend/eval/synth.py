@@ -21,6 +21,7 @@ from pathlib import Path
 GENERATOR_VERSION = "1"
 HERE = Path(__file__).resolve().parent
 HANDWRITTEN = HERE / "corpus" / "handwritten.jsonl"
+HELDOUT = HERE / "corpus" / "heldout_v2.jsonl"      # written before the grounding v2 change; never used for tuning
 SLOT_RE = re.compile(r"\{([A-Z]+)_(\d+)(?:\|([a-z0-9_+]+))?\}")
 DEVANAGARI = str.maketrans("0123456789", "०१२३४५६७८९")
 PSPS = ["ybl", "okaxis", "paytm", "oksbi", "okhdfcbank", "ibl", "upi", "axl", "okicici"]
@@ -183,9 +184,10 @@ def load_handwritten(path: Path = HANDWRITTEN) -> list[dict]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
-def build_corpus(seed: int, n_scam: int = 300, n_benign: int = 100) -> list[dict]:
+def build_corpus(seed: int, n_scam: int = 300, n_benign: int = 100, corpus: str = "main") -> list[dict]:
+    """corpus="main": hand-written + generated (the original evaluation); "heldout": the held-out set only."""
     rng = random.Random(seed)
-    records = load_handwritten() + generate(n_scam, n_benign, random.Random(seed + 1))
+    records = load_handwritten(HELDOUT) if corpus == "heldout" else load_handwritten() + generate(n_scam, n_benign, random.Random(seed + 1))
     return [render(r, rng) | {"seed": seed} for r in records]
 
 
