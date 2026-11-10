@@ -23,7 +23,7 @@ People who are being targeted by a scammer. The terms the user must accept befor
 ## What "learning" means here
 There is **no model training**. Two mechanisms:
 1. **Per-conversation adaptation.** Rules read each scammer message (scam type, stage, pressure, language). The agent mirrors the scammer's language only if the user speaks it.
-2. **Outcome learning.** A Thompson-sampling chooser picks the next tactic from a hand-written playbook, rewarded when the scammer reveals a new detail after it. Counters are stored per user. If the user opts in, the same counters (scam type, tactic, successes, trials) are added to a shared table. No message text, numbers, profile data or user ids are shared. This is federated *analytics* in spirit; it is not federated learning in the strict sense.
+2. **Outcome learning.** A Thompson-sampling chooser picks the next tactic from a hand-written playbook, rewarded when the scammer reveals a new detail after it. Counters are stored per user. If the user opts in, the same counters (scam type, tactic, successes, trials) are added to a shared table. No message text, numbers, profile data or user ids are shared. This is federated *analytics* in spirit; it is not federated learning in the strict sense. Practice sessions (the AI scammer and "I'll type as the scammer") are never learned from (`SENTINEL_BANDIT_EXCLUDE_PRACTICE`, on).
 
 ## Known risks you should tell users
 - **WhatsApp** forbids unofficial clients; the linked account can be restricted or banned. Recommend a secondary number.

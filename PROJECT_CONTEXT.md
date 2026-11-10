@@ -76,5 +76,8 @@ Auth store: `AUTH_STORE=file` (credentials on a volume) or `db` (AES-GCM blobs i
 ## 9. Known limitations
 In-memory WhatsApp link state (single backend process); capped linked accounts; no free always-on host for the bridge; Baileys is unofficial (ban risk); the bandit learns only over a hand-written playbook; "federated" = opt-in anonymous counters, not training; voice replies not verified on a real account; canary links need a public URL; small test corpora; SambaNova/Groq model names and limits change.
 
+## 9b. Evaluation harness (synthetic only)
+`backend/eval/` (not shipped in the image): `synth.py` renders placeholder templates (`eval/corpus/handwritten.jsonl`) with seeded values at run time, so no realistic number is ever committed; `eval_ioc.py` (IOC extraction), `eval_classify.py` (triage and scam-type rules; optional local UCI SMS Spam file), `bandit_sim.py` (tactic learner simulation). Reports in `eval/reports/`, results and limits in `docs/RESULTS.md`. Flags: `SENTINEL_BANDIT_EXCLUDE_PRACTICE` (default 1: practice sessions are not learned), `SENTINEL_BANDIT_SHADOW_POLICY` (default off; `backoff` logs a shadow choice). `scripts/rebuild_tactic_stats.py` is a dry-run-first counter rebuild.
+
 ## 10. v1 mistakes that must not return
 Browser-side orchestration; fabricated analysis JSON; triplicated backend/regexes; stateful `/g` regexes with `.test()`; hardcoded keys / tracked `.env` / committed WhatsApp sessions; a bridge that calls the LLM itself while the UI calls it too; unauthenticated bridge port; benign messages forced into scammer roleplay; DB write transactions held across network awaits; a fixed persona; trusting any non-empty token on the login screen.
