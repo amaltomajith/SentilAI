@@ -26,6 +26,7 @@ from sentinel.orchestrator.scenarios import Scenario
 from sentinel.orchestrator.triage import triage
 
 SCREENSHOT_ASK = re.compile(r"screen ?shot|proof of payment|payment proof|send (me )?(the )?(receipt|image|photo|pic)|show (me )?(the )?(payment|receipt)", re.I)
+PRACTICE_KINDS = frozenset({"simulation", "manual"})   # Session.kind values created by the Practice page; only "live" is a real scammer
 AMOUNT_RE = re.compile(r"(?:₹|rs\.?|inr)\s?([\d,]{2,9})|\b([\d,]{2,9})\s?(?:rs\b|rupees)", re.I)
 
 
@@ -209,8 +210,13 @@ class Engine:
                 prev_type, _, prev_tac = sess.pending_tactic.partition("|")
                 targets = PLOYS[prev_tac].targets if prev_tac in PLOYS else ()
                 hit = any((n["kind"] in targets) if targets else True for n in new_iocs)
-                owner = db.get(User, sess.user_id)
-                bandit.record(db, sess.user_id, prev_type, prev_tac, hit, bool(owner and owner.collective_opt_in))
+                if sess.kind in PRACTICE_KINDS and self.settings.bandit_exclude_practice:
+                    # a rehearsal is not evidence about real scammers: keep it out of the learner, but leave an audit trail
+                    ledger.append(db, sess, "note", {"event": "tactic_outcome_not_learned", "reason": "practice_session",
+                                                     "scam_type": prev_type, "tactic": prev_tac, "success": hit})
+                else:
+                    owner = db.get(User, sess.user_id)
+                    bandit.record(db, sess.user_id, prev_type, prev_tac, hit, bool(owner and owner.collective_opt_in))
             sess.pending_tactic = ""
             ploy = await call_tool(ctx, "select_tactic", {"session_id": sid, "scam_type": analysis.scam_type, "scammer_asked_screenshot": asked_shot, "last_ploy": last_ploy}, session_id=sid)
             sess.pending_tactic = f"{analysis.scam_type}|{ploy['ploy_id']}"

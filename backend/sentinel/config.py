@@ -34,6 +34,9 @@ class Settings:
     trusted_proxy: bool = field(default_factory=lambda: _env("TRUSTED_PROXY", "0") == "1")
     cors_origins: str = field(default_factory=lambda: _env("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"))
     max_exchanges: int = field(default_factory=lambda: int(_env("MAX_EXCHANGES", "12")))
+    # Practice sessions (AI scammer simulations and "I'll type as the scammer") must not teach the tactic learner.
+    # Bug fix, ON by default; set SENTINEL_BANDIT_EXCLUDE_PRACTICE=0 to restore the old behaviour (learn from every session).
+    bandit_exclude_practice: bool = field(default_factory=lambda: _env("SENTINEL_BANDIT_EXCLUDE_PRACTICE", "1") == "1")
 
 
 def get_settings() -> Settings:

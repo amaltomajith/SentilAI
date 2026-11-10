@@ -98,7 +98,7 @@ def setup(opt_in: bool):
 @pytest.mark.parametrize("opt_in", [False, True])
 async def test_outcome_updates_private_stats_and_global_counters_only_when_opted_in(opt_in):
     f, eng = setup(opt_in)
-    sid = eng.create_session("manual", user_id="alice")
+    sid = eng.create_session("live", user_id="alice")
     r1 = await eng.handle_inbound(sid, SCAM)
     assert r1.gate["strategy"]["scam_type"] == "kyc_bank"
     with session_scope(f) as db:
@@ -116,7 +116,7 @@ async def test_outcome_updates_private_stats_and_global_counters_only_when_opted
 
 async def test_successful_tactic_is_rewarded_when_the_scammer_reveals_what_it_targeted():
     f, eng = setup(False)
-    sid = eng.create_session("manual", user_id="alice")
+    sid = eng.create_session("live", user_id="alice")
     await eng.handle_inbound(sid, "Dear user your SBI KYC expired. Pay now or account blocked, urgent")        # no IOC in the first message
     with session_scope(f) as db:
         tactic = db.get(Session, sid).pending_tactic.split("|")[1]
