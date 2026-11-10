@@ -1,6 +1,6 @@
 ### Grounding v1 vs v2 (synthetic, seed 1)
 
-Command: `python -m eval.eval_ioc --compare --seed 1`. v2 is OFF in production unless `SENTINEL_GROUNDING_V2=1`.
+Command: `python -m eval.eval_ioc --compare --seed 1`. v2 is the production default; `SENTINEL_GROUNDING_V2=0` restores v1.
 
 *Main* = the corpus whose failure report v2 was written to fix, so its v2 numbers are optimistic. *Held-out* = 49 cases written before any v2 code and never used to tune it. *Held-out v3* = 32 cases for the obfuscation fixes (at / defanged links / IFSC case / dotted phones), written before that code. Its first run found 25 of 30 (three bugs in the new code); after fixing them it is no longer unseen.
 

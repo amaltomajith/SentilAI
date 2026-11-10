@@ -3,7 +3,7 @@
 Rule: an artifact is scammer intelligence only if its exact text literally appears in the scammer's
 inbound message AND it is not a Sentinel-generated honey token. Models never get to "propose" IOCs.
 
-Grounding v2 (SENTINEL_GROUNDING_V2=1, OFF by default) fixes failures measured in eval/reports/ioc.md:
+Grounding v2 (ON by default since 2026-11-10; SENTINEL_GROUNDING_V2=0 restores v1) fixes failures measured in eval/reports/ioc.md:
   * toll-free numbers (1800/1860...) and numbers labelled as a reference, UTR, transaction, order, tracking, invoice, PNR,
     URN, FIR, case, complaint, card, Aadhaar or OTP are not bank accounts (they had become fake "payment rails" in triage);
   * an 11-digit 0-prefixed mobile is a phone, not an account;
@@ -240,7 +240,7 @@ def extract_grounded(inbound_text: str, honey_values=frozenset(), v2: bool | Non
 
 def extract_for_leak_check(text: str) -> list[Candidate]:
     """For the outbound gate: anything that looks like an identifier, in either version. v2's 'not an account' filters
-    are about what counts as scammer intelligence; they must never make the leak check looser. Flag off: exactly v1."""
+    are about what counts as scammer intelligence; they must never make the leak check looser. With v1: exactly v1."""
     out = extract_candidates(text, v2=False)
     if _V2_DEFAULT:
         out += [c for c in extract_candidates(text, v2=True) if c not in out]

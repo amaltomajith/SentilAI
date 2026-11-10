@@ -135,7 +135,7 @@ def failures(rows) -> list[str]:
 
 
 def evaluate_version(records: list[dict], v2: bool) -> dict:
-    """Same production code path, with the grounding version pinned (v1 = today's default, v2 = SENTINEL_GROUNDING_V2=1)."""
+    """Same production code path, with the grounding version pinned (v1 = SENTINEL_GROUNDING_V2=0, v2 = the default)."""
     return evaluate(records, extract=lambda text: grounding.extract_candidates(text, v2),
                     ground=lambda cands, text, honey=frozenset(): grounding.ground(cands, text, honey, v2))
 
@@ -162,7 +162,7 @@ def report(seed: int, corpus: str = "main", v2: bool = False) -> str:
 def compare(seed: int) -> str:
     """v1 vs v2 on the corpus v2 was developed against (seen) and on the held-out set written before v2 (unseen)."""
     L = [f"### Grounding v1 vs v2 (synthetic, seed {seed})", "",
-         f"Command: `python -m eval.eval_ioc --compare --seed {seed}`. v2 is OFF in production unless `SENTINEL_GROUNDING_V2=1`.",
+         f"Command: `python -m eval.eval_ioc --compare --seed {seed}`. v2 is the production default; `SENTINEL_GROUNDING_V2=0` restores v1.",
          "", "*Main* = the corpus whose failure report v2 was written to fix, so its v2 numbers are optimistic. "
          "*Held-out* = 49 cases written before any v2 code and never used to tune it. "
          "*Held-out v3* = 32 cases for the obfuscation fixes (at / defanged links / IFSC case / dotted phones), written before "

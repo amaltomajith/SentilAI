@@ -40,9 +40,10 @@ class Settings:
     # Shadow tactic policy: "" (off, default) | "pooled" | "backoff". Computes and logs what that policy WOULD pick next to the
     # live choice (ToolTrace + ledger); it never changes the live choice. See eval/reports/bandit_sim.md.
     bandit_shadow_policy: str = field(default_factory=lambda: _env("SENTINEL_BANDIT_SHADOW_POLICY", "").strip().lower())
-    # IOC extractor v2 (toll-free / reference-number traps, scheme-less links, spaced UPI, Indic digits). OFF by default;
-    # judged in eval/reports/ioc_v2.md. Read once at start-up.
-    grounding_v2: bool = field(default_factory=lambda: _env("SENTINEL_GROUNDING_V2", "0") == "1")
+    # IOC extractor v2 (toll-free / reference-number traps, scheme-less and defanged links, "at" spellings, IFSC case,
+    # Indic digits). ON by default since 2026-11-10 (owner's decision, judged in eval/reports/ioc_v2.md);
+    # SENTINEL_GROUNDING_V2=0 switches back to v1. Read once at start-up.
+    grounding_v2: bool = field(default_factory=lambda: _env("SENTINEL_GROUNDING_V2", "1") == "1")
 
 
 def get_settings() -> Settings:

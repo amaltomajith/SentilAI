@@ -1,4 +1,4 @@
-"""Grounding v2 (SENTINEL_GROUNDING_V2): off by default, v1 unchanged, each fix shown failing under v1 first (positive control).
+"""Grounding v2 (SENTINEL_GROUNDING_V2): on by default, v1 still available and unchanged, each fix shown failing under v1 first (positive control).
 All identifiers are synthetic: synth* UPI ids, .example domains, SYNT IFSC, numbers made of zeros."""
 import asyncio
 
@@ -15,6 +15,14 @@ def kv(cands):
 
 
 @pytest.fixture
+def v1_on():
+    prev = grounding.v2_enabled()
+    grounding.use_v2(False)
+    yield
+    grounding.use_v2(prev)
+
+
+@pytest.fixture
 def v2_on():
     prev = grounding.v2_enabled()
     grounding.use_v2(True)
@@ -22,15 +30,15 @@ def v2_on():
     grounding.use_v2(prev)
 
 
-def test_flag_is_off_by_default_and_read_from_env(monkeypatch):
+def test_flag_is_on_by_default_and_can_be_switched_back(monkeypatch):
     monkeypatch.delenv("SENTINEL_GROUNDING_V2", raising=False)
-    assert Settings().grounding_v2 is False
-    assert grounding.v2_enabled() is False                          # the test process runs with production defaults
-    monkeypatch.setenv("SENTINEL_GROUNDING_V2", "1")
     assert Settings().grounding_v2 is True
+    assert grounding.v2_enabled() is True                           # the test process runs with production defaults
+    monkeypatch.setenv("SENTINEL_GROUNDING_V2", "0")
+    assert Settings().grounding_v2 is False
 
 
-def test_v1_is_unchanged_on_the_whole_corpus():
+def test_v1_is_unchanged_on_the_whole_corpus(v1_on):
     """Regression lock: v1 numbers equal those reported before v2 existed (docs/RESULTS.md rows 2 and 5, seed 1)."""
     recs = synth.build_corpus(1)
     res = eval_ioc.evaluate(recs)                                    # module default = v1
@@ -116,9 +124,17 @@ def test_gate_leak_check_is_never_looser_under_v2(v2_on):
     assert any(v.code == "leak" for v in gate.detect("try synthme @ ybl"))   # and v2 adds the spaced UPI id
 
 
-def test_gate_is_unchanged_with_the_flag_off():
+def test_gate_is_unchanged_with_the_flag_off(v1_on):
     for text in ("my card 0000 0000 0000 1234", "try synthme @ ybl", "see synth-kyc.example/pay", "call 7000000001"):
         assert grounding.extract_for_leak_check(text) == extract_candidates(text, v2=False)
+
+
+def test_default_triage_no_longer_engages_a_toll_free_bill_reminder(v1_on):
+    from sentinel.orchestrator.triage import rule_triage
+    text = "Credit card bill of Rs 3,400 is due, pay now. Customer care 1800-000-0001"
+    assert rule_triage(text).verdict == "scam"                      # positive control: v1 reads the toll-free number as an account
+    grounding.use_v2(True)
+    assert rule_triage(text).verdict != "scam"
 
 
 def test_scheme_less_links_get_the_right_host_downstream():
