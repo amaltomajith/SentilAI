@@ -14,7 +14,8 @@ def realistic_identifiers(text: str) -> list[str]:
            if len(re.sub(r"\D", "", m.group(0))) >= 7 and not re.fullmatch(r"\d{1,2}-\d{1,2}-\d{4}", m.group(0))]   # dates are fine
     bad += [m.group(0) for m in grounding.UPI_RE.finditer(t) if not m.group(0).lower().startswith("synth")]
     bad += [m.group(0) for m in grounding.IFSC_RE.finditer(t) if not m.group(0).startswith("SYN")]
-    bad += [u for u in re.findall(r"[a-z0-9-]+\.[a-z]{2,}(?:/\S*)?", t.lower()) if not re.search(r"\.(example|invalid)\b", u)]
+    bad += [u for u in re.findall(r"[a-z0-9-]+\.[a-z]{2,}(?:/\S*)?", t.lower()) if not re.search(r"\.(example|invalid)\b", u)
+            and not re.fullmatch(r"[a-z0-9-]+\.(pdf|jpg|png|apk|docx?)", u)]   # file names are not domains
     return bad
 
 
