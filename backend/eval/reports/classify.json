@@ -1,0 +1,72 @@
+{
+ "seed": 1,
+ "synthetic": true,
+ "triage_handwritten": {
+  "n_scam": 74,
+  "n_benign": 24,
+  "confusion": {
+   "scam->scam": 43,
+   "scam->uncertain": 31,
+   "scam->benign": 0,
+   "benign->scam": 3,
+   "benign->uncertain": 20,
+   "benign->benign": 1
+  },
+  "scam_engaged": 0.581081081081081,
+  "scam_halted": 0.4189189189189189,
+  "benign_engaged": 0.125,
+  "benign_halted": 0.875
+ },
+ "triage_generated": {
+  "n_scam": 300,
+  "n_benign": 100,
+  "confusion": {
+   "scam->scam": 203,
+   "scam->uncertain": 97,
+   "scam->benign": 0,
+   "benign->scam": 31,
+   "benign->uncertain": 47,
+   "benign->benign": 22
+  },
+  "scam_engaged": 0.6766666666666666,
+  "scam_halted": 0.3233333333333333,
+  "benign_engaged": 0.31,
+  "benign_halted": 0.69
+ },
+ "scam_type": {
+  "hand-written openers": {
+   "n": 74,
+   "accuracy": 0.8108108108108109,
+   "accuracy_lenient": 0.8243243243243243,
+   "wrong_as_other": 0.42857142857142855
+  },
+  "hand-written follow-ups": {
+   "n": 24,
+   "accuracy": 0.16666666666666666,
+   "accuracy_lenient": 0.16666666666666666,
+   "wrong_as_other": 0.9
+  },
+  "generated openers": {
+   "n": 300,
+   "accuracy": 0.98,
+   "accuracy_lenient": 0.98,
+   "wrong_as_other": 0.0
+  }
+ },
+ "uci_sms_spam": {
+  "n_scam": 747,
+  "n_benign": 4827,
+  "confusion": {
+   "scam->scam": 154,
+   "scam->uncertain": 593,
+   "scam->benign": 0,
+   "benign->scam": 0,
+   "benign->uncertain": 4796,
+   "benign->benign": 31
+  },
+  "scam_engaged": 0.20615796519410978,
+  "scam_halted": 0.7938420348058902,
+  "benign_engaged": 0.0,
+  "benign_halted": 1.0
+ }
+}
